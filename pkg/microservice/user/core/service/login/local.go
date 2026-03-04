@@ -27,6 +27,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 
+	aslanutil "github.com/koderover/zadig/v2/pkg/microservice/aslan/core/common/util"
 	"github.com/koderover/zadig/v2/pkg/microservice/user/config"
 	"github.com/koderover/zadig/v2/pkg/microservice/user/core/repository"
 	"github.com/koderover/zadig/v2/pkg/microservice/user/core/repository/models"
@@ -40,6 +41,7 @@ import (
 
 type LoginArgs struct {
 	Account       string `json:"account"`
+	EncryptedKey  string `json:"encrypted_key"`
 	Password      string `json:"password"`
 	CaptchaID     string `json:"captcha_id"`
 	CaptchaAnswer string `json:"captcha_answer"`
@@ -165,22 +167,32 @@ func verifyCaptchaForAccount(captchaID, captchaAnswer, account string) error {
 	return nil
 }
 
-func decryptLoginPassword(password string, logger *zap.SugaredLogger) (string, error) {
-	secretKey := strings.TrimSpace(configbase.SecretKey())
-	if secretKey == "" {
-		logger.Errorf("failed to decrypt password, SECRET_KEY is empty")
-		return "", fmt.Errorf("login password decrypt is not configured")
+func decryptLoginPassword(encryptedKey, encryptedPassword string, logger *zap.SugaredLogger) (string, error) {
+	if encryptedKey == "" {
+		return "", fmt.Errorf("encrypted_key is required")
+	}
+	if encryptedPassword == "" {
+		return "", fmt.Errorf("password is required")
 	}
 
-	plainText, err := crypto.AesDecrypt(strings.TrimSpace(password), secretKey)
+	aesKeyResp, err := aslanutil.GetAesKeyFromEncryptedKey(encryptedKey, logger)
 	if err != nil {
-		logger.Errorf("failed to decrypt password, error: %s", err)
+		logger.Errorf("failed to decrypt aes key by GetAesKeyFromEncryptedKey, error: %s", err)
+		return "", fmt.Errorf("invalid encrypted_key")
+	}
+	if aesKeyResp == nil || aesKeyResp.PlainText == "" {
+		return "", fmt.Errorf("invalid encrypted_key")
+	}
+
+	password, err := crypto.AesDecrypt(encryptedPassword, aesKeyResp.PlainText)
+	if err != nil {
+		logger.Errorf("failed to decrypt password by aes key, error: %s", err)
+		return "", fmt.Errorf("invalid encrypted password")
+	}
+	if password == "" {
 		return "", fmt.Errorf("invalid password")
 	}
-	if len(plainText) == 0 {
-		return "", fmt.Errorf("invalid password")
-	}
-	return plainText, nil
+	return password, nil
 }
 
 func LocalLogin(args *LoginArgs, logger *zap.SugaredLogger) (*User, int, error) {
@@ -189,10 +201,7 @@ func LocalLogin(args *LoginArgs, logger *zap.SugaredLogger) (*User, int, error) 
 		return nil, 0, fmt.Errorf("account is required")
 	}
 	loginFailedKey := loginFailedCacheKey(account)
-	if strings.TrimSpace(args.Password) == "" {
-		return nil, 0, fmt.Errorf("password is required")
-	}
-	passwordText, err := decryptLoginPassword(args.Password, logger)
+	passwordText, err := decryptLoginPassword(args.EncryptedKey, args.Password, logger)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -340,6 +349,7 @@ func issueLoginToken(user *models.User, mfaVerified bool, logger *zap.SugaredLog
 	if err != nil {
 		logger.Errorf("failed to write token into cache, error: %s\n warn: this will cause login failure", err)
 	}
+	loginFailedKey := loginFailedCacheKey(user.Account)
 	loginCache.Delete(loginFailedKey)
 
 	return &User{
