@@ -236,8 +236,6 @@ func (c *larkBranchMergeChecker) isBranchMerged(repo *types.Repository, sourceBr
 	namespace = strings.Replace(namespace, "%2F", "/", -1)
 	cacheKey := fmt.Sprintf("%d:%s:%s:%s:%s", repo.CodehostID, namespace, repo.RepoName, sourceBranch, targetBranch)
 	if merged, ok := c.cache[cacheKey]; ok {
-		c.ctx.Logger.Infof("lark branch merge check cache hit, codehostID: %d, namespace: %s, repo: %s, sourceBranch: %s, targetBranch: %s, merged: %v",
-			repo.CodehostID, namespace, repo.RepoName, sourceBranch, targetBranch, merged)
 		return merged, nil
 	}
 
@@ -263,14 +261,12 @@ func (c *larkBranchMergeChecker) isBranchMerged(repo *types.Repository, sourceBr
 		return false, err
 	}
 	c.cache[cacheKey] = merged
-	c.ctx.Logger.Infof("lark branch merge check finished, codehostID: %d, namespace: %s, repo: %s, sourceBranch: %s, targetBranch: %s, merged: %v",
-		repo.CodehostID, namespace, repo.RepoName, sourceBranch, targetBranch, merged)
+
 	return merged, nil
 }
 
 func (c *larkBranchMergeChecker) getClient(codehostID int) (client.CodeHostClient, error) {
 	if codehostClient, ok := c.clients[codehostID]; ok {
-		c.ctx.Logger.Infof("lark branch merge checker reuse codehost client, codehostID: %d", codehostID)
 		return codehostClient, nil
 	}
 
@@ -278,7 +274,6 @@ func (c *larkBranchMergeChecker) getClient(codehostID int) (client.CodeHostClien
 	if err != nil {
 		return nil, fmt.Errorf("failed to get codehost info: %w", err)
 	}
-	c.ctx.Logger.Infof("lark branch merge checker open codehost client, codehostID: %d, type: %s, address: %s", ch.ID, ch.Type, ch.Address)
 
 	codehostClient, err := open.OpenClient(ch, c.ctx.Logger)
 	if err != nil {

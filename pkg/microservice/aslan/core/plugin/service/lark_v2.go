@@ -1090,7 +1090,7 @@ func ListLarkReleaseBindItemsV2(ctx *internalhandler.Context, workspaceID, relea
 			}
 
 			if releaseWorkflowErr != nil {
-				detail.Error = releaseWorkflowErr.Error()
+				detail.Error = "获取发布工作流失败"
 				branchMerged = false
 				mergeDetails = append(mergeDetails, detail)
 				continue
@@ -1098,7 +1098,7 @@ func ListLarkReleaseBindItemsV2(ctx *internalhandler.Context, workspaceID, relea
 
 			repo, err := getFirstRepoFromWorkflow(releaseWorkflow, cfg.ServiceName, cfg.ServiceModule)
 			if err != nil {
-				detail.Error = err.Error()
+				detail.Error = "获取服务代码库失败"
 				branchMerged = false
 				ctx.Logger.Warnf("ListLarkReleaseBindItemsV2: failed to resolve repo for %s/%s: %v", cfg.ServiceName, cfg.ServiceModule, err)
 				mergeDetails = append(mergeDetails, detail)
@@ -1109,7 +1109,7 @@ func ListLarkReleaseBindItemsV2(ctx *internalhandler.Context, workspaceID, relea
 
 			merged, err := branchMergeChecker.isBranchMerged(repo, cfg.Branch, releaseStageSetting.TargetBranch)
 			if err != nil {
-				detail.Error = err.Error()
+				detail.Error = "检测分支合并状态失败"
 				branchMerged = false
 				ctx.Logger.Warnf("ListLarkReleaseBindItemsV2: failed to check branch merge status for %s/%s %s -> %s: %v", cfg.ServiceName, cfg.ServiceModule, cfg.Branch, releaseStageSetting.TargetBranch, err)
 				mergeDetails = append(mergeDetails, detail)
@@ -1118,7 +1118,7 @@ func ListLarkReleaseBindItemsV2(ctx *internalhandler.Context, workspaceID, relea
 
 			detail.Merged = merged
 			if !merged {
-				detail.Error = fmt.Sprintf("source branch %s is not merged into target branch %s", cfg.Branch, releaseStageSetting.TargetBranch)
+				detail.Error = "源分支未合入目标分支"
 				branchMerged = false
 			}
 			mergeDetails = append(mergeDetails, detail)
