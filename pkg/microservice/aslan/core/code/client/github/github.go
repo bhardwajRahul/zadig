@@ -70,6 +70,20 @@ func (c *Client) ListBranches(opt client.ListOpt) ([]*client.Branch, error) {
 	return res, nil
 }
 
+func (c *Client) IsBranchMerged(opt client.BranchMergeCheckOpt) (bool, error) {
+	if opt.SourceBranch == opt.TargetBranch {
+		return true, nil
+	}
+
+	compare, _, err := c.Client.Repositories.CompareCommits(context.TODO(), opt.Namespace, opt.ProjectName, opt.TargetBranch, opt.SourceBranch)
+	if err != nil {
+		return false, err
+	}
+
+	status := compare.GetStatus()
+	return status == "identical" || status == "behind" || compare.GetTotalCommits() == 0, nil
+}
+
 func (c *Client) ListTags(opt client.ListOpt) ([]*client.Tag, error) {
 	tags, err := c.Client.ListTags(context.TODO(), opt.Namespace, opt.ProjectName, nil)
 	if err != nil {
