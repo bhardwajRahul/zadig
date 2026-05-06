@@ -1104,6 +1104,8 @@ func ListLarkReleaseBindItemsV2(ctx *internalhandler.Context, workspaceID, relea
 				mergeDetails = append(mergeDetails, detail)
 				continue
 			}
+			ctx.Logger.Infof("ListLarkReleaseBindItemsV2: resolved repo for %s/%s, codehostID: %d, source: %s, namespace: %s, owner: %s, repo: %s, sourceBranch: %s, targetBranch: %s",
+				cfg.ServiceName, cfg.ServiceModule, repo.CodehostID, repo.Source, repo.RepoNamespace, repo.RepoOwner, repo.RepoName, cfg.Branch, releaseStageSetting.TargetBranch)
 
 			merged, err := branchMergeChecker.isBranchMerged(repo, cfg.Branch, releaseStageSetting.TargetBranch)
 			if err != nil {
