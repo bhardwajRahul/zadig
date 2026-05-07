@@ -801,7 +801,10 @@ const (
 	ReleaseWorkflow WorkflowCategory = "release"
 )
 
+type ServiceDeployStrategy string
+
 const (
+	ServiceDeployStrategyDraft  = "draft"
 	ServiceDeployStrategyImport = "import"
 	ServiceDeployStrategyDeploy = "deploy"
 )
