@@ -1215,7 +1215,7 @@ func updateMultiK8sEnv(c *gin.Context, request *service.UpdateEnvRequest, produc
 	for _, arg := range args {
 		for _, service := range arg.Services {
 			if service.DeployStrategy == setting.ServiceDeployStrategyImport || service.DeployStrategy == setting.ServiceDeployStrategyDraft {
-				if !commonutil.ValidateZadigProfessionalLicense(licenseStatus) {
+				if !commonutil.ValidateZadigEnterpriseLicense(licenseStatus) {
 					ctx.RespErr = e.ErrLicenseInvalid.AddDesc("")
 					return
 				}
@@ -1287,7 +1287,7 @@ func updateMultiHelmEnv(c *gin.Context, request *service.UpdateEnvRequest, produ
 
 	for _, service := range args.ChartValues {
 		if service.DeployStrategy == setting.ServiceDeployStrategyImport || service.DeployStrategy == setting.ServiceDeployStrategyDraft {
-			if !commonutil.ValidateZadigProfessionalLicense(licenseStatus) {
+			if !commonutil.ValidateZadigEnterpriseLicense(licenseStatus) {
 				ctx.RespErr = e.ErrLicenseInvalid.AddDesc("")
 				return
 			}
@@ -1401,7 +1401,7 @@ func updateMultiHelmChartEnv(c *gin.Context, request *service.UpdateEnvRequest, 
 	}
 	for _, chartValue := range args.ChartValues {
 		if chartValue.DeployStrategy == setting.ServiceDeployStrategyImport || chartValue.DeployStrategy == setting.ServiceDeployStrategyDraft {
-			if !commonutil.ValidateZadigProfessionalLicense(licenseStatus) {
+			if !commonutil.ValidateZadigEnterpriseLicense(licenseStatus) {
 				ctx.RespErr = e.ErrLicenseInvalid.AddDesc("")
 				return
 			}
