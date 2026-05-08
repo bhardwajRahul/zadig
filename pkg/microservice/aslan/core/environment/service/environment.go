@@ -537,7 +537,7 @@ func generateMobileCustomWorkflow(projectName, workflowName string, focalBasicIm
 
 type UpdateServiceArg struct {
 	ServiceName      string                          `json:"service_name"`
-	DeployStrategy   string                          `json:"deploy_strategy"`
+	DeployStrategy   setting.ServiceDeployStrategy   `json:"deploy_strategy"`
 	VariableKVs      []*commontypes.RenderVariableKV `json:"variable_kvs"`
 	OverrideResource bool                            `json:"override_resource"`
 }
@@ -593,7 +593,7 @@ func UpdateMultipleK8sEnv(args []*UpdateEnv, envNames []string, productName, req
 			continue
 		}
 
-		strategyMap := make(map[string]string)
+		strategyMap := make(map[string]setting.ServiceDeployStrategy)
 		overrideResourceMap := make(map[string]bool)
 		updateSvcs := make([]*templatemodels.ServiceRender, 0)
 		updateRevisionSvcs := make([]string, 0)
@@ -650,7 +650,7 @@ func UpdateMultipleK8sEnv(args []*UpdateEnv, envNames []string, productName, req
 
 // TODO need optimize
 // cvm and k8s yaml projects should not be handled together
-func updateProductImpl(updateRevisionSvcs []string, deployStrategy map[string]string, overrideResource map[string]bool, existedProd, updateProd *commonmodels.Product, filter svcUpgradeFilter, user string, log *zap.SugaredLogger) (err error) {
+func updateProductImpl(updateRevisionSvcs []string, deployStrategy map[string]setting.ServiceDeployStrategy, overrideResource map[string]bool, existedProd, updateProd *commonmodels.Product, filter svcUpgradeFilter, user string, log *zap.SugaredLogger) (err error) {
 	productName := existedProd.ProductName
 	envName := existedProd.EnvName
 	namespace := existedProd.Namespace
@@ -2142,7 +2142,7 @@ func UpdateProductVariable(productName, envName, username, requestID string, upd
 	productResp.ServiceRenders = updatedSvcs
 
 	if productResp.ServiceDeployStrategy == nil {
-		productResp.ServiceDeployStrategy = make(map[string]string)
+		productResp.ServiceDeployStrategy = make(map[string]setting.ServiceDeployStrategy)
 	}
 	needUpdateStrategy := false
 	for _, rc := range updatedSvcs {
@@ -3622,7 +3622,7 @@ func UpdateProductGlobalVariablesWithRender(templateProduct *templatemodels.Prod
 	product.ServiceRenders = updatedSvcList
 
 	if product.ServiceDeployStrategy == nil {
-		product.ServiceDeployStrategy = make(map[string]string)
+		product.ServiceDeployStrategy = make(map[string]setting.ServiceDeployStrategy)
 	}
 	needUpdateStrategy := false
 	for _, rc := range updatedSvcList {

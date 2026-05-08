@@ -50,7 +50,7 @@ type SvcRevision struct {
 	CurrentRevision   int64                           `json:"current_revision"`
 	NextRevision      int64                           `json:"next_revision"`
 	Updatable         bool                            `json:"updatable"`
-	DeployStrategy    string                          `json:"deploy_strategy"`
+	DeployStrategy    setting.ServiceDeployStrategy   `json:"deploy_strategy"`
 	Error             string                          `json:"error"`
 	Deleted           bool                            `json:"deleted"`
 	New               bool                            `json:"new"`
@@ -481,7 +481,7 @@ type EnvCfgArgs struct {
 
 type OpenAPICreateServiceArgs struct {
 	ServiceName    string                          `json:"service_name"`
-	DeployStrategy string                          `json:"deploy_strategy"`
+	DeployStrategy setting.ServiceDeployStrategy   `json:"deploy_strategy"`
 	Containers     []*commonmodels.Container       `json:"containers"`
 	VariableKVs    []*commontypes.RenderVariableKV `json:"variable_kvs"`
 	Status         string                          `json:"status"`
@@ -572,7 +572,7 @@ type OpenAPIEnvServiceDetail struct {
 	Status         string                           `json:"status"`
 	Type           string                           `json:"type"`
 	Error          string                           `json:"error"`
-	DeployStrategy string                           `json:"deploy_strategy"`
+	DeployStrategy setting.ServiceDeployStrategy    `json:"deploy_strategy"`
 }
 
 type OpenAPICreateHelmEnvArgs struct {

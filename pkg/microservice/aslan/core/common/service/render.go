@@ -51,19 +51,19 @@ type ValuesDataArgs struct {
 }
 
 type HelmSvcRenderArg struct {
-	EnvName        string                     `json:"envName"`
-	ServiceName    string                     `json:"serviceName"`
-	IsChartDeploy  bool                       `json:"is_chart_deploy"`
-	ReleaseName    string                     `json:"release_name"`
-	ChartRepo      string                     `json:"chart_repo"`
-	ChartName      string                     `json:"chart_name"`
-	ChartVersion   string                     `json:"chartVersion"`
-	OverrideValues []*KVPair                  `json:"overrideValues"`
-	OverrideYaml   string                     `json:"overrideYaml"`
-	ValuesData     *ValuesDataArgs            `json:"valuesData"`
-	YamlData       *templatemodels.CustomYaml `json:"yaml_data"`
-	VariableYaml   string                     `json:"variable_yaml"`
-	DeployStrategy string                     `json:"deploy_strategy"` // New since 1.16.0, used to determine if the service will be installed
+	EnvName        string                        `json:"envName"`
+	ServiceName    string                        `json:"serviceName"`
+	IsChartDeploy  bool                          `json:"is_chart_deploy"`
+	ReleaseName    string                        `json:"release_name"`
+	ChartRepo      string                        `json:"chart_repo"`
+	ChartName      string                        `json:"chart_name"`
+	ChartVersion   string                        `json:"chartVersion"`
+	OverrideValues []*KVPair                     `json:"overrideValues"`
+	OverrideYaml   string                        `json:"overrideYaml"`
+	ValuesData     *ValuesDataArgs               `json:"valuesData"`
+	YamlData       *templatemodels.CustomYaml    `json:"yaml_data"`
+	VariableYaml   string                        `json:"variable_yaml"`
+	DeployStrategy setting.ServiceDeployStrategy `json:"deploy_strategy"` // New since 1.16.0, used to determine if the service will be installed
 }
 
 type K8sSvcRenderArg struct {
@@ -73,7 +73,7 @@ type K8sSvcRenderArg struct {
 	VariableKVs        []*commontypes.RenderVariableKV `json:"variable_kvs"`
 	LatestVariableYaml string                          `json:"latest_variable_yaml"`
 	LatestVariableKVs  []*commontypes.RenderVariableKV `json:"latest_variable_kvs"`
-	DeployStrategy     string                          `json:"deploy_strategy,omitempty"` // New since 1.16.0, used to determine if the service will be installed
+	DeployStrategy     setting.ServiceDeployStrategy   `json:"deploy_strategy,omitempty"` // New since 1.16.0, used to determine if the service will be installed
 }
 
 type RenderChartDiffResult string

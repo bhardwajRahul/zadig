@@ -45,15 +45,15 @@ import (
 )
 
 type ListEnvServiceVersionsResponse struct {
-	ServiceName    string                    `json:"service_name"`
-	Revision       int64                     `json:"revision"`
-	Containers     []*commonmodels.Container `json:"containers"`
-	Operation      config.EnvOperation       `json:"operation"`
-	DeployType     string                    `json:"deploy_type"`
-	DeployStrategy string                    `json:"deploy_strategy"`
-	Detail         string                    `json:"detail"`
-	CreateTime     int64                     `json:"create_time"`
-	CreateBy       string                    `json:"create_by"`
+	ServiceName    string                        `json:"service_name"`
+	Revision       int64                         `json:"revision"`
+	Containers     []*commonmodels.Container     `json:"containers"`
+	Operation      config.EnvOperation           `json:"operation"`
+	DeployType     string                        `json:"deploy_type"`
+	DeployStrategy setting.ServiceDeployStrategy `json:"deploy_strategy"`
+	Detail         string                        `json:"detail"`
+	CreateTime     int64                         `json:"create_time"`
+	CreateBy       string                        `json:"create_by"`
 }
 
 func ListEnvServiceVersions(ctx *internalhandler.Context, projectName, envName, serviceName string, isHelmChart, isProduction bool, log *zap.SugaredLogger) ([]ListEnvServiceVersionsResponse, error) {
@@ -99,20 +99,20 @@ func ListEnvServiceVersions(ctx *internalhandler.Context, projectName, envName, 
 }
 
 type GetEnvServiceVersionYamlResponse struct {
-	Type           string                    `json:"type"`
-	Yaml           string                    `json:"yaml"`
-	VariableYaml   string                    `json:"variable_yaml"`
-	OverrideKVs    string                    `json:"override_kvs"`
-	Containers     []*commonmodels.Container `json:"containers"`
-	Operation      config.EnvOperation       `json:"operation"`
-	DeployType     string                    `json:"deploy_type"`
-	DeployStrategy string                    `json:"deploy_strategy"`
-	ChartRepo      string                    `json:"chart_repo"`
-	ChartName      string                    `json:"chart_name"`
-	ChartVersion   string                    `json:"chart_version"`
-	Detail         string                    `json:"detail"`
-	CreateTime     int64                     `json:"create_time"`
-	CreateBy       string                    `json:"create_by"`
+	Type           string                        `json:"type"`
+	Yaml           string                        `json:"yaml"`
+	VariableYaml   string                        `json:"variable_yaml"`
+	OverrideKVs    string                        `json:"override_kvs"`
+	Containers     []*commonmodels.Container     `json:"containers"`
+	Operation      config.EnvOperation           `json:"operation"`
+	DeployType     string                        `json:"deploy_type"`
+	DeployStrategy setting.ServiceDeployStrategy `json:"deploy_strategy"`
+	ChartRepo      string                        `json:"chart_repo"`
+	ChartName      string                        `json:"chart_name"`
+	ChartVersion   string                        `json:"chart_version"`
+	Detail         string                        `json:"detail"`
+	CreateTime     int64                         `json:"create_time"`
+	CreateBy       string                        `json:"create_by"`
 }
 
 func GetEnvServiceVersionYaml(ctx *internalhandler.Context, projectName, envName, serviceName string, revision int64, isHelmChart, isProduction bool, log *zap.SugaredLogger) (GetEnvServiceVersionYamlResponse, error) {

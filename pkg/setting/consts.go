@@ -804,9 +804,9 @@ const (
 type ServiceDeployStrategy string
 
 const (
-	ServiceDeployStrategyDraft  = "draft"
-	ServiceDeployStrategyImport = "import"
-	ServiceDeployStrategyDeploy = "deploy"
+	ServiceDeployStrategyDraft  ServiceDeployStrategy = "draft"
+	ServiceDeployStrategyImport ServiceDeployStrategy = "import"
+	ServiceDeployStrategyDeploy ServiceDeployStrategy = "deploy"
 )
 
 // Instant Message System types

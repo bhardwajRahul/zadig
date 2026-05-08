@@ -62,20 +62,20 @@ type ReleaseFilter struct {
 }
 
 type HelmReleaseResp struct {
-	ReleaseName       string        `json:"releaseName"`
-	ServiceName       string        `json:"serviceName"`
-	Revision          int           `json:"revision"`
-	ChartRepo         string        `json:"chartRepo"`
-	Chart             string        `json:"chart"`
-	ChartVersion      string        `json:"chartVersion"`
-	AppVersion        string        `json:"appVersion"`
-	OverrideValues    string        `json:"overrideValues"`
-	OverrideYaml      string        `json:"overrideYaml"`
-	Status            ReleaseStatus `json:"status"`
-	Updatable         bool          `json:"updatable"`
-	IsHelmChartDeploy bool          `json:"isHelmChartDeploy"`
-	DeployStrategy    string        `json:"deployStrategy"`
-	Error             string        `json:"error"`
+	ReleaseName       string                        `json:"releaseName"`
+	ServiceName       string                        `json:"serviceName"`
+	Revision          int                           `json:"revision"`
+	ChartRepo         string                        `json:"chartRepo"`
+	Chart             string                        `json:"chart"`
+	ChartVersion      string                        `json:"chartVersion"`
+	AppVersion        string                        `json:"appVersion"`
+	OverrideValues    string                        `json:"overrideValues"`
+	OverrideYaml      string                        `json:"overrideYaml"`
+	Status            ReleaseStatus                 `json:"status"`
+	Updatable         bool                          `json:"updatable"`
+	IsHelmChartDeploy bool                          `json:"isHelmChartDeploy"`
+	DeployStrategy    setting.ServiceDeployStrategy `json:"deployStrategy"`
+	Error             string                        `json:"error"`
 }
 
 type ChartInfo struct {

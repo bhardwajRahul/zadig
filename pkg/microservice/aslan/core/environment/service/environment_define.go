@@ -25,6 +25,7 @@ import (
 	templatemodels "github.com/koderover/zadig/v2/pkg/microservice/aslan/core/common/repository/models/template"
 	commonservice "github.com/koderover/zadig/v2/pkg/microservice/aslan/core/common/service"
 	commontypes "github.com/koderover/zadig/v2/pkg/microservice/aslan/core/common/types"
+	"github.com/koderover/zadig/v2/pkg/setting"
 )
 
 const (
@@ -151,12 +152,12 @@ type K8sRendersetArg struct {
 
 type ProductK8sServiceCreationInfo struct {
 	*commonmodels.ProductService
-	DeployStrategy string `json:"deploy_strategy"`
+	DeployStrategy setting.ServiceDeployStrategy `json:"deploy_strategy"`
 }
 
 type ProductHelmServiceCreationInfo struct {
 	*commonservice.HelmSvcRenderArg
-	DeployStrategy string `json:"deploy_strategy"`
+	DeployStrategy setting.ServiceDeployStrategy `json:"deploy_strategy"`
 }
 
 type CreateSingleProductArg struct {

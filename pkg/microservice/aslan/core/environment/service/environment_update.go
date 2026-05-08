@@ -199,7 +199,7 @@ func updateK8sSvcInAllEnvs(productName string, templateSvc *commonmodels.Service
 	return retErr.ErrorOrNil()
 }
 
-func updateK8sProduct(exitedProd *commonmodels.Product, user, requestID string, updateRevisionSvc []string, filter svcUpgradeFilter, updatedSvcs []*templatemodels.ServiceRender, deployStrategy map[string]string, overrideResource map[string]bool,
+func updateK8sProduct(exitedProd *commonmodels.Product, user, requestID string, updateRevisionSvc []string, filter svcUpgradeFilter, updatedSvcs []*templatemodels.ServiceRender, deployStrategy map[string]setting.ServiceDeployStrategy, overrideResource map[string]bool,
 	force bool, globalVariables []*commontypes.GlobalVariableKV, log *zap.SugaredLogger) error {
 	envName, productName := exitedProd.EnvName, exitedProd.ProductName
 	kubeClient, err := clientmanager.NewKubeClientManager().GetControllerRuntimeClient(exitedProd.ClusterID)
