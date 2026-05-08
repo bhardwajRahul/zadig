@@ -1107,6 +1107,15 @@ func generateDeployInfoForEnv(env, project string, production bool, configuredSe
 			VariableYaml: serviceGeneralInfoMap[service.ServiceName].VariableYaml,
 		}
 
+		if projectInfo.IsHelmProduct() {
+			log.Debugf("ovrrideYaml: %+v", envServiceMap[service.ServiceName].GetServiceRender().OverrideYaml.SourceDetail)
+			sourceGitRepo, err := commonservice.UnMarshalSourceDetail(envServiceMap[service.ServiceName].GetServiceRender().OverrideYaml.SourceDetail)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal source detail, error: %s", err)
+			}
+			envVariableInfo.SourceGitRepo = sourceGitRepo
+		}
+
 		serviceOption = append(serviceOption, &commonmodels.DeployOptionInfo{
 			DeployBasicInfo: svcBasicInfo,
 

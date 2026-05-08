@@ -587,6 +587,8 @@ type DeployVariableInfo struct {
 	VariableKVs []*commontypes.RenderVariableKV `bson:"variable_kvs"                     yaml:"variable_kvs"              json:"variable_kvs"`
 	OverrideKVs string                          `bson:"override_kvs"                     yaml:"override_kvs"              json:"override_kvs"` // used for helm services, json-encoded string of kv value
 
+	SourceGitRepo *CreateFromRepo `bson:"source_git_repo,omitempty" json:"source_git_repo,omitempty" yaml:"source_git_repo,omitempty"`
+
 	// final yaml for both helm and k8s service to deploy
 	VariableYaml string `bson:"variable_yaml"                    yaml:"variable_yaml"                       json:"variable_yaml"`
 }
