@@ -378,7 +378,7 @@ func DeleteHelmReleaseFromEnv(userName, requestID string, productInfo *commonmod
 
 	// services deployed by zadig
 	for _, prodSvc := range serviceNameToProdSvcMap {
-		if !commonutil.ServiceDeployed(prodSvc.ServiceName, productInfo.ServiceDeployStrategy) {
+		if !commonutil.ServiceIsDeployed(prodSvc.ServiceName, productInfo.ServiceDeployStrategy) {
 			continue
 		}
 		delete(productInfo.ServiceDeployStrategy, prodSvc.ServiceName)
@@ -401,7 +401,7 @@ func DeleteHelmReleaseFromEnv(userName, requestID string, productInfo *commonmod
 		wg := sync.WaitGroup{}
 
 		for _, prodSvc := range serviceNameToProdSvcMap {
-			if !commonutil.ServiceDeployed(prodSvc.ServiceName, productInfo.ServiceDeployStrategy) || !isDelete {
+			if !commonutil.ServiceIsDeployed(prodSvc.ServiceName, productInfo.ServiceDeployStrategy) || !isDelete {
 				continue
 			}
 			wg.Add(1)
@@ -513,7 +513,7 @@ func DeleteHelmServiceFromEnv(userName, requestID string, productInfo *commonmod
 	// services deployed by zadig
 	deployedSvcs := sets.NewString()
 	for _, svc := range serviceNames {
-		if !commonutil.ServiceDeployed(svc, productInfo.ServiceDeployStrategy) {
+		if !commonutil.ServiceIsDeployed(svc, productInfo.ServiceDeployStrategy) {
 			continue
 		}
 		deployedSvcs.Insert(svc)
@@ -655,6 +655,10 @@ func DeploySingleHelmRelease(product *commonmodels.Product, productSvc *commonmo
 		releaseName              string
 		replacedMergedValuesYaml string
 	)
+
+	if productSvc.DeployStrategy == setting.ServiceDeployStrategyDraft {
+		return helmservice.UpdateServiceInEnv(product, productSvc, user, config.EnvOperationDefault, "")
+	}
 
 	releaseName = productSvc.ReleaseName
 	if productSvc.FromZadig() {
@@ -871,7 +875,7 @@ func DeployMultiHelmRelease(productResp *commonmodels.Product, helmClient *helmt
 				continue
 			}
 			if !commonutil.ChartDeployed(chartInfo, productResp.ServiceDeployStrategy) {
-				// import service, no need to deploy
+				// no need to deploy
 
 				// update import services' images in container and values yaml
 				_, err = helmservice.NewHelmDeployService().GenMergedValues(prodSvc, productResp.DefaultValues, nil)
@@ -881,6 +885,9 @@ func DeployMultiHelmRelease(productResp *commonmodels.Product, helmClient *helmt
 					log.Error(err)
 					return err
 				}
+
+				prodSvc.Render = chartInfo
+				prodSvc.UpdateTime = time.Now().Unix()
 
 				err = commonutil.CreateEnvServiceVersion(productResp, prodSvc, user, config.EnvOperationDefault, "", session, log)
 				if err != nil {

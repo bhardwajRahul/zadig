@@ -2327,8 +2327,8 @@ type OpenAPIHelmService struct {
 	ValuesYaml string `json:"values_yaml"`
 	// 从 Git 导入 Values 的配置
 	ImportValuesFromGit *OpenAPIImportValuesFromGit `json:"import_values_from_git"`
-	// 部署策略，支持 import 和 deploy
-	DeployStrategy setting.ServiceDeployStrategy `json:"deploy_strategy" binding:"required,oneof=import deploy"`
+	// 部署策略，支持 import, deploy 和 draft
+	DeployStrategy setting.ServiceDeployStrategy `json:"deploy_strategy" binding:"required,oneof=import deploy draft"`
 }
 
 type OpenAPIImportValuesFromGit struct {

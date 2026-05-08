@@ -202,6 +202,12 @@ func UpdateServiceInEnv(product *commonmodels.Product, productSvc *commonmodels.
 		} else {
 			newProductInfo.ServiceDeployStrategy = commonutil.SetChartServiceDeployStrategyImport(newProductInfo.ServiceDeployStrategy, productSvc.ReleaseName)
 		}
+	} else if productSvc.DeployStrategy == setting.ServiceDeployStrategyDraft {
+		if productSvc.FromZadig() {
+			newProductInfo.ServiceDeployStrategy = commonutil.SetServiceDeployStrategyDraft(newProductInfo.ServiceDeployStrategy, productSvc.ServiceName)
+		} else {
+			newProductInfo.ServiceDeployStrategy = commonutil.SetChartServiceDeployStrategyDraft(newProductInfo.ServiceDeployStrategy, productSvc.ReleaseName)
+		}
 	}
 
 	if err = productColl.Update(newProductInfo); err != nil {

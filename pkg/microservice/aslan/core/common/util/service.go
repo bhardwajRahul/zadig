@@ -71,9 +71,17 @@ func GetReleaseDeployStrategy(releaseName string, strategyMap map[string]setting
 	}
 }
 
+func GetChartDeployed(render *templatemodels.ServiceRender, strategyMap map[string]setting.ServiceDeployStrategy) setting.ServiceDeployStrategy {
+	if render.DeployedFromZadig() {
+		return strategyMap[render.ServiceName]
+	} else {
+		return strategyMap[GetReleaseDeployStrategyKey(render.ReleaseName)]
+	}
+}
+
 func ChartDeployed(render *templatemodels.ServiceRender, strategyMap map[string]setting.ServiceDeployStrategy) bool {
 	if render.DeployedFromZadig() {
-		return ServiceDeployed(render.ServiceName, strategyMap)
+		return ServiceIsDeployed(render.ServiceName, strategyMap)
 	} else {
 		return ReleaseDeployed(render.ReleaseName, strategyMap)
 	}
@@ -87,7 +95,15 @@ func SetChartDeployed(render *templatemodels.ServiceRender, strategyMap map[stri
 	}
 }
 
-func ServiceDeployed(serviceName string, strategyMap map[string]setting.ServiceDeployStrategy) bool {
+func ServiceIsDraft(serviceName string, strategyMap map[string]setting.ServiceDeployStrategy) bool {
+	return GetServiceDeployStrategy(serviceName, strategyMap) == setting.ServiceDeployStrategyDraft
+}
+
+func ServiceIsImported(serviceName string, strategyMap map[string]setting.ServiceDeployStrategy) bool {
+	return GetServiceDeployStrategy(serviceName, strategyMap) == setting.ServiceDeployStrategyImport
+}
+
+func ServiceIsDeployed(serviceName string, strategyMap map[string]setting.ServiceDeployStrategy) bool {
 	return GetServiceDeployStrategy(serviceName, strategyMap) == setting.ServiceDeployStrategyDeploy
 }
 
@@ -96,7 +112,27 @@ func ReleaseDeployed(releaseName string, strategyMap map[string]setting.ServiceD
 }
 
 func DeployStrategyChanged(serviceName string, strategyMapOld map[string]setting.ServiceDeployStrategy, strategyMapNew map[string]setting.ServiceDeployStrategy) bool {
-	return ServiceDeployed(serviceName, strategyMapOld) != ServiceDeployed(serviceName, strategyMapNew)
+	return GetServiceDeployStrategy(serviceName, strategyMapOld) != GetServiceDeployStrategy(serviceName, strategyMapNew)
+}
+
+func DeployStrategyIsFromDraftToDeploy(serviceName string, strategyMapOld map[string]setting.ServiceDeployStrategy, strategyMapNew map[string]setting.ServiceDeployStrategy) bool {
+	return GetServiceDeployStrategy(serviceName, strategyMapOld) == setting.ServiceDeployStrategyDraft && GetServiceDeployStrategy(serviceName, strategyMapNew) == setting.ServiceDeployStrategyDeploy
+}
+
+func SetServiceDeployStrategyDraft(strategyMap map[string]setting.ServiceDeployStrategy, serviceName string) map[string]setting.ServiceDeployStrategy {
+	if strategyMap == nil {
+		strategyMap = make(map[string]setting.ServiceDeployStrategy)
+	}
+	strategyMap[serviceName] = setting.ServiceDeployStrategyDraft
+	return strategyMap
+}
+
+func SetChartServiceDeployStrategyDraft(strategyMap map[string]setting.ServiceDeployStrategy, releaseName string) map[string]setting.ServiceDeployStrategy {
+	if strategyMap == nil {
+		strategyMap = make(map[string]setting.ServiceDeployStrategy)
+	}
+	strategyMap[GetReleaseDeployStrategyKey(releaseName)] = setting.ServiceDeployStrategyDraft
+	return strategyMap
 }
 
 func SetServiceDeployStrategyDepoly(strategyMap map[string]setting.ServiceDeployStrategy, serviceName string) map[string]setting.ServiceDeployStrategy {
@@ -107,19 +143,19 @@ func SetServiceDeployStrategyDepoly(strategyMap map[string]setting.ServiceDeploy
 	return strategyMap
 }
 
-func SetServiceDeployStrategyImport(strategyMap map[string]setting.ServiceDeployStrategy, serviceName string) map[string]setting.ServiceDeployStrategy {
-	if strategyMap == nil {
-		strategyMap = make(map[string]setting.ServiceDeployStrategy)
-	}
-	strategyMap[serviceName] = setting.ServiceDeployStrategyImport
-	return strategyMap
-}
-
 func SetChartServiceDeployStrategyDepoly(strategyMap map[string]setting.ServiceDeployStrategy, releaseName string) map[string]setting.ServiceDeployStrategy {
 	if strategyMap == nil {
 		strategyMap = make(map[string]setting.ServiceDeployStrategy)
 	}
 	strategyMap[GetReleaseDeployStrategyKey(releaseName)] = setting.ServiceDeployStrategyDeploy
+	return strategyMap
+}
+
+func SetServiceDeployStrategyImport(strategyMap map[string]setting.ServiceDeployStrategy, serviceName string) map[string]setting.ServiceDeployStrategy {
+	if strategyMap == nil {
+		strategyMap = make(map[string]setting.ServiceDeployStrategy)
+	}
+	strategyMap[serviceName] = setting.ServiceDeployStrategyImport
 	return strategyMap
 }
 

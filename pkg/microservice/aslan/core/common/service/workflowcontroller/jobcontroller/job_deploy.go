@@ -339,7 +339,7 @@ func (c *DeployJobCtl) updateSystemService(env *commonmodels.Product, currentYam
 
 	addZadigLabel := !c.jobTaskSpec.Production
 	if addZadigLabel {
-		if !commonutil.ServiceDeployed(c.jobTaskSpec.ServiceName, env.ServiceDeployStrategy) && !updateRevision &&
+		if !commonutil.ServiceIsDeployed(c.jobTaskSpec.ServiceName, env.ServiceDeployStrategy) && !updateRevision &&
 			!slices.Contains(c.jobTaskSpec.DeployContents, config.DeployVars) {
 			addZadigLabel = false
 		}

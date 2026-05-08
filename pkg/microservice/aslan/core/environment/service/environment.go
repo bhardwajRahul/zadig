@@ -783,7 +783,7 @@ func updateProductImpl(updateRevisionSvcs []string, deployStrategy map[string]se
 				wg.Add(1)
 				go func(pSvc *commonmodels.ProductService) {
 					defer wg.Done()
-					if !commonutil.ServiceDeployed(pSvc.ServiceName, deployStrategy) {
+					if commonutil.ServiceIsImported(pSvc.ServiceName, deployStrategy) {
 						// import service, no need to deploy
 						containers, errFetchImage := fetchWorkloadImages(pSvc, existedProd, kubeClient)
 						if errFetchImage != nil {
@@ -792,6 +792,14 @@ func updateProductImpl(updateRevisionSvcs []string, deployStrategy map[string]se
 						}
 						service.Containers = containers
 
+						updateProd.ServiceDeployStrategy = deployStrategy
+						err = commonutil.CreateEnvServiceVersion(updateProd, service, user, config.EnvOperationDefault, "", session, log)
+						if err != nil {
+							log.Errorf("CreateK8SEnvServiceVersion error: %v", err)
+						}
+
+						return
+					} else if commonutil.ServiceIsDraft(pSvc.ServiceName, deployStrategy) {
 						updateProd.ServiceDeployStrategy = deployStrategy
 						err = commonutil.CreateEnvServiceVersion(updateProd, service, user, config.EnvOperationDefault, "", session, log)
 						if err != nil {
@@ -1515,7 +1523,7 @@ func GetAffectedServices(productName, envName string, arg *K8sRendersetArg, log 
 	}
 
 	for _, singleSvc := range productServiceRevisions {
-		if !commonutil.ServiceDeployed(singleSvc.ServiceName, productInfo.ServiceDeployStrategy) {
+		if !commonutil.ServiceIsDeployed(singleSvc.ServiceName, productInfo.ServiceDeployStrategy) {
 			continue
 		}
 		containsKey, err := yamlutil.ContainsFlatKey(singleSvc.VariableYaml, singleSvc.ServiceVars, diffKeys)
@@ -1932,7 +1940,7 @@ func UpdateProductDefaultValuesWithRender(product *commonmodels.Product, _ *mode
 			}
 		}
 	}
-	return UpdateProductVariable(product.ProductName, product.EnvName, userName, requestID, updatedSvcList, nil, product.DefaultValues, product.YamlData, nil, log)
+	return UpdateProductVariable(product.ProductName, product.EnvName, userName, requestID, updatedSvcList, nil, product.DefaultValues, product.YamlData, nil, nil, log)
 }
 
 func UpdateHelmProductCharts(productName, envName, userName, requestID string, production bool, args *EnvRendersetArg, log *zap.SugaredLogger) error {
@@ -1980,6 +1988,8 @@ func UpdateHelmProductCharts(productName, envName, userName, requestID string, p
 		_, err = UpdateMultipleHelmChartEnv(requestID, userName, updateEnvArg, product.Production, log)
 		return err
 	} else {
+		deployStrategyMap := make(map[string]setting.ServiceDeployStrategy)
+
 		// update override values
 		for serviceName, arg := range requestValueMap {
 			arg.EnvName = envName
@@ -1992,6 +2002,7 @@ func UpdateHelmProductCharts(productName, envName, userName, requestID string, p
 			arg.FillRenderChartModel(rcValues, rcValues.ChartVersion)
 			changedCharts = append(changedCharts, arg)
 			updatedRcMap[serviceName] = rcValues
+			deployStrategyMap[serviceName] = arg.DeployStrategy
 		}
 
 		if args.UpdateServiceTmpl {
@@ -2010,7 +2021,7 @@ func UpdateHelmProductCharts(productName, envName, userName, requestID string, p
 				rcList = append(rcList, rc)
 			}
 
-			return UpdateProductVariable(productName, envName, userName, requestID, rcList, nil, product.DefaultValues, product.YamlData, nil, log)
+			return UpdateProductVariable(productName, envName, userName, requestID, rcList, nil, product.DefaultValues, product.YamlData, deployStrategyMap, nil, log)
 		}
 	}
 }
@@ -2125,11 +2136,11 @@ func SyncHelmProductEnvironment(productName, envName, requestID string, log *zap
 
 	log.Infof("start to sync helm environment variables, project: %s, env: %s, service list: %v", productName, envName, svcNames)
 	unlockOnReturn = false
-	return UpdateProductVariable(productName, envName, "cron", requestID, updatedRcList, nil, product.DefaultValues, product.YamlData, syncLock, log)
+	return UpdateProductVariable(productName, envName, "cron", requestID, updatedRcList, nil, product.DefaultValues, product.YamlData, nil, syncLock, log)
 }
 
 func UpdateProductVariable(productName, envName, username, requestID string, updatedSvcs []*templatemodels.ServiceRender,
-	_ []*commontypes.GlobalVariableKV, defaultValue string, yamlData *templatemodels.CustomYaml, syncLock *cache.RedisLock, log *zap.SugaredLogger) error {
+	_ []*commontypes.GlobalVariableKV, defaultValue string, yamlData *templatemodels.CustomYaml, newDeployStrategyMap map[string]setting.ServiceDeployStrategy, syncLock *cache.RedisLock, log *zap.SugaredLogger) error {
 	opt := &commonrepo.ProductFindOptions{Name: productName, EnvName: envName}
 	productResp, err := commonrepo.NewProductColl().Find(opt)
 	if err != nil {
@@ -2146,11 +2157,32 @@ func UpdateProductVariable(productName, envName, username, requestID string, upd
 	}
 	needUpdateStrategy := false
 	for _, rc := range updatedSvcs {
-		if !commonutil.ChartDeployed(rc, productResp.ServiceDeployStrategy) {
-			needUpdateStrategy = true
-			commonutil.SetChartDeployed(rc, productResp.ServiceDeployStrategy)
+		// update deploy strategy if deploy strategy map is not nil
+		// compatible with old code
+		if newDeployStrategyMap != nil {
+			if commonutil.ServiceIsDraft(rc.ServiceName, newDeployStrategyMap) {
+				continue
+			}
+
+			if commonutil.DeployStrategyIsFromDraftToDeploy(rc.ServiceName, productResp.ServiceDeployStrategy, newDeployStrategyMap) {
+				needUpdateStrategy = true
+				commonutil.SetChartDeployed(rc, productResp.ServiceDeployStrategy)
+			} else if !commonutil.ChartDeployed(rc, newDeployStrategyMap) {
+				needUpdateStrategy = true
+				commonutil.SetChartDeployed(rc, productResp.ServiceDeployStrategy)
+			}
+		} else {
+			if commonutil.ServiceIsDraft(rc.ServiceName, newDeployStrategyMap) {
+				continue
+			}
+
+			if !commonutil.ChartDeployed(rc, productResp.ServiceDeployStrategy) {
+				needUpdateStrategy = true
+				commonutil.SetChartDeployed(rc, productResp.ServiceDeployStrategy)
+			}
 		}
 	}
+
 	if needUpdateStrategy {
 		err = commonrepo.NewProductColl().UpdateDeployStrategy(envName, productResp.ProductName, productResp.ServiceDeployStrategy)
 		if err != nil {
@@ -2467,7 +2499,7 @@ func DeleteProduct(username, envName, productName, requestID string, isDelete bo
 
 				if hc, errHelmClient := helmtool.NewClientFromNamespace(productInfo.ClusterID, productInfo.Namespace); errHelmClient == nil {
 					for _, service := range productInfo.GetServiceMap() {
-						if !commonutil.ServiceDeployed(service.ServiceName, productInfo.ServiceDeployStrategy) {
+						if !commonutil.ServiceIsDeployed(service.ServiceName, productInfo.ServiceDeployStrategy) {
 							continue
 						}
 						if err = kube.UninstallServiceByName(hc, service.ServiceName, productInfo, service.Revision, true); err != nil {
@@ -2613,7 +2645,7 @@ func deleteHelmProductServices(userName, requestID string, productInfo *commonmo
 func deleteK8sProductServices(productInfo *commonmodels.Product, serviceNames []string, isDelete bool, log *zap.SugaredLogger) error {
 	serviceRelatedYaml := make(map[string]string)
 	for _, service := range productInfo.GetServiceMap() {
-		if !commonutil.ServiceDeployed(service.ServiceName, productInfo.ServiceDeployStrategy) || !isDelete {
+		if !commonutil.ServiceIsDeployed(service.ServiceName, productInfo.ServiceDeployStrategy) || !isDelete {
 			continue
 		}
 		if util.InStringArray(service.ServiceName, serviceNames) {
@@ -2670,7 +2702,7 @@ func deleteK8sProductServices(productInfo *commonmodels.Product, serviceNames []
 	}
 
 	for _, name := range serviceNames {
-		if !commonutil.ServiceDeployed(name, productInfo.ServiceDeployStrategy) || !isDelete {
+		if !commonutil.ServiceIsDeployed(name, productInfo.ServiceDeployStrategy) || !isDelete {
 			continue
 		}
 
@@ -2729,12 +2761,27 @@ func GetEstimatedRenderCharts(productName, envName string, getSvcRenderArgs []*c
 		return nil, e.ErrGetRenderSet.AddDesc("failed to get render charts in env")
 	}
 
+	deployStrategy := make(map[string]setting.ServiceDeployStrategy)
+	productInfo, err := commonrepo.NewProductColl().Find(&commonrepo.ProductFindOptions{
+		Name:    productName,
+		EnvName: envName,
+	})
+	if err != nil && err != mongo.ErrNoDocuments {
+		return nil, err
+	}
+
+	if err == nil || err == mongo.ErrNoDocuments {
+		deployStrategy = productInfo.ServiceDeployStrategy
+	}
+
 	rcMap := make(map[string]*commonservice.HelmSvcRenderArg)
 	rcChartMap := make(map[string]*commonservice.HelmSvcRenderArg)
 	for _, rc := range renderChartInEnv {
 		if rc.IsChartDeploy {
+			rc.DeployStrategy = deployStrategy[commonutil.GetReleaseDeployStrategyKey(rc.ReleaseName)]
 			rcChartMap[rc.ReleaseName] = rc
 		} else {
+			rc.DeployStrategy = deployStrategy[rc.ServiceName]
 			rcMap[rc.ServiceName] = rc
 		}
 	}
@@ -2929,6 +2976,11 @@ func upsertService(env *commonmodels.Product, newService *commonmodels.ProductSe
 		return nil, nil
 	}
 
+	if !commonutil.ServiceIsDeployed(newService.ServiceName, env.ServiceDeployStrategy) {
+		log.Infof("skip service %s, deploy strategy: %+v", newService.ServiceName, commonutil.GetServiceDeployStrategy(newService.ServiceName, env.ServiceDeployStrategy))
+		return nil, nil
+	}
+
 	parsedYaml, err := kube.RenderEnvService(env, newService.GetServiceRender(), newService)
 	if err != nil {
 		log.Errorf("Failed to render newService %s, error: %v", newService.ServiceName, err)
@@ -2951,9 +3003,12 @@ func upsertService(env *commonmodels.Product, newService *commonmodels.ProductSe
 		}
 	}
 
-	isFromImportToDeploy := false
+	forceUpdateYaml := false
 	if prevSvc != nil && prevSvc.DeployStrategy == setting.ServiceDeployStrategyImport && newService.DeployStrategy == setting.ServiceDeployStrategyDeploy {
-		isFromImportToDeploy = true
+		forceUpdateYaml = true
+	}
+	if prevSvc != nil && prevSvc.DeployStrategy == setting.ServiceDeployStrategyDraft && newService.DeployStrategy == setting.ServiceDeployStrategyDeploy {
+		forceUpdateYaml = true
 	}
 
 	resourceApplyParam := &kube.ResourceApplyParam{
@@ -2969,7 +3024,7 @@ func upsertService(env *commonmodels.Product, newService *commonmodels.ProductSe
 		AddZadigLabel:            addLabel,
 		SharedEnvHandler:         EnsureUpdateZadigService,
 		IstioGrayscaleEnvHandler: kube.EnsureUpdateGrayscaleService,
-		IsFromImportToDeploy:     isFromImportToDeploy,
+		ForceUpdateYaml:          forceUpdateYaml,
 		OverrideResource:         overrideResource,
 	}
 
@@ -3138,7 +3193,7 @@ func updateHelmProductGroup(username, productName, envName string, productResp *
 
 	// uninstall services
 	for serviceName, serviceRevision := range deletedSvcRevision {
-		if !commonutil.ServiceDeployed(serviceName, productResp.ServiceDeployStrategy) {
+		if !commonutil.ServiceIsDeployed(serviceName, productResp.ServiceDeployStrategy) {
 			continue
 		}
 		if productResp.ServiceDeployStrategy != nil {

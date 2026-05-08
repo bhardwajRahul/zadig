@@ -31,6 +31,7 @@ import (
 	"github.com/koderover/zadig/v2/pkg/microservice/aslan/core/common/service/repository"
 	commontypes "github.com/koderover/zadig/v2/pkg/microservice/aslan/core/common/types"
 	aslanUtil "github.com/koderover/zadig/v2/pkg/microservice/aslan/core/common/util"
+	commonutil "github.com/koderover/zadig/v2/pkg/microservice/aslan/core/common/util"
 	"github.com/koderover/zadig/v2/pkg/setting"
 	e "github.com/koderover/zadig/v2/pkg/tool/errors"
 	helmtool "github.com/koderover/zadig/v2/pkg/tool/helmclient"
@@ -135,9 +136,17 @@ func (j DeployJobController) Update(useUserInput bool, ticket *commonmodels.Appr
 	if err != nil {
 		return fmt.Errorf("failed to find project %s, err: %v", j.workflow.Project, err)
 	}
+
 	if project.ProductFeature != nil {
 		j.jobSpec.DeployType = project.ProductFeature.DeployType
 	}
+
+	if latestSpec.ValueSyncStrategy == "" {
+		j.jobSpec.ValueSyncStrategy = config.ValueSyncStrategyManual
+	} else {
+		j.jobSpec.ValueSyncStrategy = latestSpec.ValueSyncStrategy
+	}
+
 	j.jobSpec.SkipCheckRunStatus = latestSpec.SkipCheckRunStatus
 	j.jobSpec.SkipCheckHelmWorkloadStatus = latestSpec.SkipCheckHelmWorkloadStatus
 	j.jobSpec.DeployContents = latestSpec.DeployContents
@@ -493,6 +502,11 @@ func (j DeployJobController) ToTask(taskID int64) ([]*commonmodels.JobTask, erro
 				OverrideResource:   svc.YAMLMergeStrategy == config.YAMLMergeStrategyOverride,
 			}
 
+			if len(jobTaskSpec.DeployContents) == 1 && slices.Contains(jobTaskSpec.DeployContents, config.DeployImage) &&
+				product.ServiceDeployStrategy[serviceName] == setting.ServiceDeployStrategyDraft {
+				return nil, fmt.Errorf("service %s is in draft, cannot deploy image only", serviceName)
+			}
+
 			for _, module := range svc.Modules {
 				// if external env, check service exists
 				if project.IsHostProduct() {
@@ -618,6 +632,7 @@ func (j DeployJobController) ToTask(taskID int64) ([]*commonmodels.JobTask, erro
 	}
 
 	if j.jobSpec.DeployType == setting.HelmDeployType {
+		log.Debugf("value sync strategy: %s", j.jobSpec.ValueSyncStrategy)
 		for jobSubTaskID, svc := range j.jobSpec.Services {
 			var serviceRevision int64
 			var autoSyncFlag bool
@@ -629,6 +644,11 @@ func (j DeployJobController) ToTask(taskID int64) ([]*commonmodels.JobTask, erro
 				if pSvc.GetServiceRender().OverrideYaml.AutoSync {
 					autoSyncFlag = true
 				}
+			}
+
+			if len(j.jobSpec.DeployContents) == 1 && slices.Contains(j.jobSpec.DeployContents, config.DeployImage) &&
+				commonutil.GetChartDeployed(pSvc.GetServiceRender(), product.ServiceDeployStrategy) == setting.ServiceDeployStrategyDraft {
+				return nil, fmt.Errorf("service %s is in draft, cannot deploy image only", svc.ServiceName)
 			}
 
 			revisionSvc, err := repository.QueryTemplateService(&commonrepo.ServiceFindOption{
@@ -674,7 +694,7 @@ func (j DeployJobController) ToTask(taskID int64) ([]*commonmodels.JobTask, erro
 				})
 			}
 
-			if autoSyncFlag {
+			if autoSyncFlag || j.jobSpec.ValueSyncStrategy == config.ValueSyncStrategyAuto {
 				_, values, err := commonservice.SyncYamlFromSource(pSvc.GetServiceRender().OverrideYaml, pSvc.GetServiceRender().OverrideYaml.YamlContent, pSvc.GetServiceRender().OverrideYaml.AutoSyncYaml)
 				if err != nil {
 					return nil, fmt.Errorf("failed to sync values for service: %s, error: %s", svc.ServiceName, err)

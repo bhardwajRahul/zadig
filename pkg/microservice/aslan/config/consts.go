@@ -771,6 +771,13 @@ const (
 	ValueMergeStrategyOverride   ValueMergeStrategy = "override"
 )
 
+type ValueSyncStrategy string
+
+const (
+	ValueSyncStrategyManual ValueSyncStrategy = "manual"
+	ValueSyncStrategyAuto   ValueSyncStrategy = "auto"
+)
+
 type YAMLMergeStrategy string
 
 const (

@@ -304,6 +304,10 @@ func RollbackEnvServiceVersion(ctx *internalhandler.Context, projectName, envNam
 		}
 	}
 
+	if env.ServiceDeployStrategy[serviceName] != envSvcVersion.DeployStrategy {
+		return nil, e.ErrRollbackEnvServiceVersion.AddErr(fmt.Errorf("服务 %s 的部署策略发生变化，不能回滚", envSvcVersion.Service.ServiceName))
+	}
+
 	session := mongotool.Session()
 	defer session.EndSession(context.Background())
 
@@ -383,11 +387,6 @@ func RollbackEnvServiceVersion(ctx *internalhandler.Context, projectName, envNam
 			}
 
 			if envSvcVersion.DeployStrategy == setting.ServiceDeployStrategyImport {
-				currentDeployStrategy := env.ServiceDeployStrategy[envSvcVersion.Service.ServiceName]
-				if currentDeployStrategy != setting.ServiceDeployStrategyImport {
-					return nil, e.ErrRollbackEnvServiceVersion.AddErr(fmt.Errorf("服务 %s 的部署策略发生变化，不能回滚", envSvcVersion.Service.ServiceName))
-				}
-
 				option := &kube.GeneSvcYamlOption{
 					ProductName:           env.ProductName,
 					EnvName:               envName,
@@ -417,11 +416,6 @@ func RollbackEnvServiceVersion(ctx *internalhandler.Context, projectName, envNam
 					rollbackStatus.RelatedPodLabels = append(rollbackStatus.RelatedPodLabels, relatedPodLabels...)
 				}
 			} else {
-				currentDeployStrategy := env.ServiceDeployStrategy[envSvcVersion.Service.ServiceName]
-				if currentDeployStrategy != "" && currentDeployStrategy != setting.ServiceDeployStrategyDeploy {
-					return nil, e.ErrRollbackEnvServiceVersion.AddErr(fmt.Errorf("服务 %s 的部署策略发生变化，不能回滚", envSvcVersion.Service.ServiceName))
-				}
-
 				fakeEnv := &commonmodels.Product{
 					ProductName: envSvcVersion.ProductName,
 					EnvName:     envSvcVersion.EnvName,
@@ -462,21 +456,23 @@ func RollbackEnvServiceVersion(ctx *internalhandler.Context, projectName, envNam
 					OverrideResource:    overrideResource,
 				}
 
-				unstructuredList, err := kube.CreateOrPatchResource(resourceApplyParam, log)
-				if err != nil {
-					return nil, e.ErrRollbackEnvServiceVersion.AddErr(fmt.Errorf("failed to create or patch resource for env %s, service %s, revision %d, error: %v", envSvcVersion.EnvName, envSvcVersion.Service.ServiceName, envSvcVersion.Service.Revision, err))
-				}
+				if envSvcVersion.DeployStrategy != setting.ServiceDeployStrategyDraft {
+					unstructuredList, err := kube.CreateOrPatchResource(resourceApplyParam, log)
+					if err != nil {
+						return nil, e.ErrRollbackEnvServiceVersion.AddErr(fmt.Errorf("failed to create or patch resource for env %s, service %s, revision %d, error: %v", envSvcVersion.EnvName, envSvcVersion.Service.ServiceName, envSvcVersion.Service.Revision, err))
+					}
 
-				for _, us := range unstructuredList {
-					switch us.GetKind() {
-					case setting.Deployment, setting.StatefulSet:
-						podLabels, _, err := unstructured.NestedStringMap(us.Object, "spec", "template", "metadata", "labels")
-						if err == nil {
-							rollbackStatus.RelatedPodLabels = append(rollbackStatus.RelatedPodLabels, podLabels)
+					for _, us := range unstructuredList {
+						switch us.GetKind() {
+						case setting.Deployment, setting.StatefulSet:
+							podLabels, _, err := unstructured.NestedStringMap(us.Object, "spec", "template", "metadata", "labels")
+							if err == nil {
+								rollbackStatus.RelatedPodLabels = append(rollbackStatus.RelatedPodLabels, podLabels)
+							}
+							rollbackStatus.ReplaceResources = append(rollbackStatus.ReplaceResources, commonmodels.Resource{Name: us.GetName(), Kind: us.GetKind()})
+						case setting.CronJob, setting.Job:
+							rollbackStatus.ReplaceResources = append(rollbackStatus.ReplaceResources, commonmodels.Resource{Name: us.GetName(), Kind: us.GetKind()})
 						}
-						rollbackStatus.ReplaceResources = append(rollbackStatus.ReplaceResources, commonmodels.Resource{Name: us.GetName(), Kind: us.GetKind()})
-					case setting.CronJob, setting.Job:
-						rollbackStatus.ReplaceResources = append(rollbackStatus.ReplaceResources, commonmodels.Resource{Name: us.GetName(), Kind: us.GetKind()})
 					}
 				}
 
@@ -493,7 +489,6 @@ func RollbackEnvServiceVersion(ctx *internalhandler.Context, projectName, envNam
 						if svc.ServiceName == envSvcVersion.Service.ServiceName {
 							svcIndex = j
 							groupIndex = i
-							svc.Resources = kube.UnstructuredToResources(unstructuredList)
 							for _, kv := range envSvcVersion.Service.GetServiceRender().OverrideYaml.RenderVariableKVs {
 								kv.UseGlobalVariable = false
 							}
@@ -550,10 +545,6 @@ func RollbackEnvServiceVersion(ctx *internalhandler.Context, projectName, envNam
 				return nil, e.ErrRollbackEnvServiceVersion.AddErr(err)
 			}
 		} else if envSvcVersion.Service.Type == setting.HelmDeployType || envSvcVersion.Service.Type == setting.HelmChartDeployType {
-			if envSvcVersion.DeployStrategy == setting.ServiceDeployStrategyImport {
-				return nil, e.ErrRollbackEnvServiceVersion.AddErr(fmt.Errorf("Helm 服务不能回滚至仅导入状态"))
-			}
-
 			templateProduct, err := templaterepo.NewProductColl().Find(envSvcVersion.ProductName)
 			if err != nil {
 				return nil, e.ErrRollbackEnvServiceVersion.AddErr(fmt.Errorf("failed to find project %s, error: %v", envSvcVersion.ProductName, err))
@@ -578,18 +569,20 @@ func RollbackEnvServiceVersion(ctx *internalhandler.Context, projectName, envNam
 			}
 
 			env.DefaultValues = ""
-			envSvcVersion.Service.DeployStrategy = setting.ServiceDeployStrategyDeploy
+			envSvcVersion.Service.DeployStrategy = envSvcVersion.DeployStrategy
 			envSvcVersion.Service.GetServiceRender().SetOverrideYaml(string(mergedValuesYaml))
 
-			go func(done chan bool) {
-				err = kube.DeploySingleHelmRelease(env, envSvcVersion.Service, svcTmpl, nil, templateProduct.ReleaseMaxHistory, 0, ctx.UserName)
-				if err != nil {
-					title := fmt.Sprintf("回滚 %s/%s 环境 %s 服务失败", projectName, envName, serviceName)
-					notify.SendErrorMessage(ctx.UserName, title, ctx.RequestID, err, log)
-					done <- false
-				}
-				done <- true
-			}(rollbackStatus.HelmDeployStatusChan)
+			if envSvcVersion.DeployStrategy == setting.ServiceDeployStrategyDraft {
+				go func(done chan bool) {
+					err = kube.DeploySingleHelmRelease(env, envSvcVersion.Service, svcTmpl, nil, templateProduct.ReleaseMaxHistory, 0, ctx.UserName)
+					if err != nil {
+						title := fmt.Sprintf("回滚 %s/%s 环境 %s 服务失败", projectName, envName, serviceName)
+						notify.SendErrorMessage(ctx.UserName, title, ctx.RequestID, err, log)
+						done <- false
+					}
+					done <- true
+				}(rollbackStatus.HelmDeployStatusChan)
+			}
 
 			rollbackRecord := &commonmodels.EnvInfo{
 				ProjectName:   projectName,
