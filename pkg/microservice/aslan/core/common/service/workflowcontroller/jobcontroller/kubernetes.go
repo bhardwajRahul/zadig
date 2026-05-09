@@ -525,6 +525,9 @@ EOF`,
 		if jobTaskSpec.Properties.CacheDirType == commontypes.WorkspaceCacheDir {
 			mountPath = workflowCtx.Workspace
 		}
+		if jobTaskSpec.Properties.IgnoreCache {
+			mountPath = commontypes.IgnoreCacheNFSMountPath
+		}
 
 		job.Spec.Template.Spec.Containers[0].VolumeMounts = append(job.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
 			Name:      volumeName,

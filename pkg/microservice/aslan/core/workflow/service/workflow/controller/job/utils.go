@@ -109,6 +109,56 @@ func GenJobName(workflow *commonmodels.WorkflowV4, jobName string, subTaskID int
 	return fmt.Sprintf("job-%d-%d-%d-%s", stageIndex, jobIndex, subTaskID, jobName)
 }
 
+func resolveRuntimeCacheDir(cacheDirType types.CacheDirType, cacheUserDir string) string {
+	if cacheDirType == types.WorkspaceCacheDir {
+		return "/workspace"
+	}
+	return cacheUserDir
+}
+
+func shouldBypassNFSMountForIgnoreCache(jobTaskSpec *commonmodels.JobTaskFreestyleSpec) bool {
+	return jobTaskSpec != nil &&
+		jobTaskSpec.Properties.CacheEnable &&
+		jobTaskSpec.Properties.IgnoreCache &&
+		jobTaskSpec.Properties.Cache.MediumType == types.NFSMedium
+}
+
+func shouldSkipObjectCacheRestore(jobTaskSpec *commonmodels.JobTaskFreestyleSpec) bool {
+	return jobTaskSpec != nil &&
+		jobTaskSpec.Properties.CacheEnable &&
+		jobTaskSpec.Properties.IgnoreCache &&
+		jobTaskSpec.Properties.Cache.MediumType == types.ObjectMedium
+}
+
+func shellQuote(v string) string {
+	return "'" + strings.ReplaceAll(v, "'", "'\"'\"'") + "'"
+}
+
+func buildIgnoreCacheNFSSyncStep(stepName, jobName, srcDir string) *commonmodels.StepTask {
+	dstDir := types.IgnoreCacheNFSMountPath
+	scripts := []string{
+		fmt.Sprintf("mkdir -p %s", shellQuote(srcDir)),
+		fmt.Sprintf("mkdir -p %s", shellQuote(dstDir)),
+		fmt.Sprintf("cp -a %s/. %s/ || echo \"ignore-cache nfs sync failed from %s to %s\" >&2", shellQuote(srcDir), shellQuote(dstDir), srcDir, dstDir),
+	}
+	return &commonmodels.StepTask{
+		Name:     stepName,
+		JobName:  jobName,
+		StepType: config.StepShell,
+		Spec: &step.StepShellSpec{
+			Scripts: scripts,
+		},
+	}
+}
+
+func appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec *commonmodels.JobTaskFreestyleSpec, steps *[]*commonmodels.StepTask, stepName, jobName string) {
+	if !shouldBypassNFSMountForIgnoreCache(jobTaskSpec) {
+		return
+	}
+	cacheDir := resolveRuntimeCacheDir(jobTaskSpec.Properties.CacheDirType, jobTaskSpec.Properties.CacheUserDir)
+	*steps = append(*steps, buildIgnoreCacheNFSSyncStep(stepName, jobName, cacheDir))
+}
+
 func applyKeyVals(base, input commonmodels.RuntimeKeyValList, useInputKVSource bool) commonmodels.RuntimeKeyValList {
 	resp := make([]*commonmodels.RuntimeKeyVal, 0)
 

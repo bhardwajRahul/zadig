@@ -698,6 +698,7 @@ func (j TestingJobController) toJobTask(jobSubTaskID int, testing *commonmodels.
 		}
 		if jobTaskSpec.Properties.CacheEnable {
 			jobTaskSpec.Properties.CacheUserDir = commonutil.RenderEnv(jobTaskSpec.Properties.CacheUserDir, jobTaskSpec.Properties.Envs)
+			jobTaskSpec.Properties.IgnoreCache = j.workflow.IgnoreCache
 			if jobTaskSpec.Properties.Cache.MediumType == types.NFSMedium {
 				jobTaskSpec.Properties.Cache.NFSProperties.Subpath = commonutil.RenderEnv(jobTaskSpec.Properties.Cache.NFSProperties.Subpath, jobTaskSpec.Properties.Envs)
 			} else if jobTaskSpec.Properties.Cache.MediumType == types.ObjectMedium {
@@ -737,7 +738,7 @@ func (j TestingJobController) toJobTask(jobSubTaskID int, testing *commonmodels.
 	}
 	jobTaskSpec.Steps = append(jobTaskSpec.Steps, toolInstallStep)
 	// init download object cache step
-	if jobTaskSpec.Properties.CacheEnable && jobTaskSpec.Properties.Cache.MediumType == types.ObjectMedium {
+	if jobTaskSpec.Properties.CacheEnable && jobTaskSpec.Properties.Cache.MediumType == types.ObjectMedium && !shouldSkipObjectCacheRestore(jobTaskSpec) {
 		cacheDir := "/workspace"
 		if jobTaskSpec.Properties.CacheDirType == types.UserDefinedCacheDir {
 			cacheDir = jobTaskSpec.Properties.CacheUserDir
@@ -951,6 +952,8 @@ func (j TestingJobController) toJobTask(jobSubTaskID int, testing *commonmodels.
 		}
 		jobTaskSpec.Steps = append(jobTaskSpec.Steps, archiveStep)
 	}
+
+	appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec, &jobTaskSpec.Steps, fmt.Sprintf("%s-%s", testing.Name, "ignore-cache-sync"), jobTask.Name)
 
 	renderedTask, err := replaceServiceAndModulesForTask(jobTask, serviceName, serviceModule)
 	if err != nil {

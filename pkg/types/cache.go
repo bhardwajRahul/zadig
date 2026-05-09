@@ -27,6 +27,8 @@ const (
 	NFSMedium    MediumType = "nfs"
 )
 
+const IgnoreCacheNFSMountPath = "/zadig/cache-ignore-source"
+
 type ProvisionType string
 
 const (
