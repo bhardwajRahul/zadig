@@ -56,15 +56,16 @@ var (
 		"taskTypeScanning": "代码扫描",
 		"taskTypeTesting":  "测试",
 
-		"taskStatusSuccess":          "执行成功",
-		"taskStatusFailed":           "执行失败",
-		"taskStatusCancelled":        "执行取消",
-		"taskStatusTimeout":          "执行超时",
-		"taskStatusRejected":         "执行被拒绝",
-		"taskStatusExecutionStarted": "开始执行",
-		"taskStatusManualApproval":   "待确认",
-		"taskStatusPause":            "暂停",
-		"jobStatusUnstarted":         "未执行",
+		"taskStatusSuccess":           "执行成功",
+		"taskStatusFailed":            "执行失败",
+		"taskStatusCancelled":         "执行取消",
+		"taskStatusTimeout":           "执行超时",
+		"taskStatusRejected":          "执行被拒绝",
+		"taskStatusExecutionStarted":  "开始执行",
+		"taskStatusManualApproval":    "待确认",
+		"taskStatusPause":             "暂停",
+		"taskStatusWaitingManualExec": "等待手动执行",
+		"jobStatusUnstarted":          "未执行",
 
 		"jobTypeBuild":            "构建",
 		"jobTypeDeploy":           "容器服务部署",
@@ -119,6 +120,7 @@ var (
 		"notificationTextWaitingForApproval": "等待审批",
 		"notificationTextExecutor":           "执行用户",
 		"notificationTextProjectName":        "项目名称",
+		"notificationTextPendingStage":       "待执行阶段",
 		"notificationTextStartTime":          "开始时间",
 		"notificationTextDuration":           "持续时间",
 		"notificationTextRemark":             "备注",
@@ -137,15 +139,16 @@ var (
 		"taskTypeScanning": "scanning",
 		"taskTypeTesting":  "testing",
 
-		"taskStatusSuccess":          "Passed",
-		"taskStatusFailed":           "Failed",
-		"taskStatusCancelled":        "Cancelled",
-		"taskStatusTimeout":          "Timeout",
-		"taskStatusRejected":         "Rejected",
-		"taskStatusExecutionStarted": "Created",
-		"taskStatusManualApproval":   "Waiting for confirmation",
-		"taskStatusPause":            "Pause",
-		"jobStatusUnstarted":         "Unstarted",
+		"taskStatusSuccess":           "Passed",
+		"taskStatusFailed":            "Failed",
+		"taskStatusCancelled":         "Cancelled",
+		"taskStatusTimeout":           "Timeout",
+		"taskStatusRejected":          "Rejected",
+		"taskStatusExecutionStarted":  "Created",
+		"taskStatusManualApproval":    "Waiting for confirmation",
+		"taskStatusPause":             "Pause",
+		"taskStatusWaitingManualExec": "Waiting for Manual Execution",
+		"jobStatusUnstarted":          "Unstarted",
 
 		"jobTypeBuild":            "Build",
 		"jobTypeDeploy":           "Deploy",
@@ -199,6 +202,7 @@ var (
 		"notificationTextWaitingForApproval": "waiting for approval",
 		"notificationTextExecutor":           "Executor",
 		"notificationTextProjectName":        "Project Name",
+		"notificationTextPendingStage":       "Pending Stage",
 		"notificationTextStartTime":          "Start Time",
 		"notificationTextDuration":           "Duration",
 		"notificationTextRemark":             "Remark",
@@ -490,7 +494,10 @@ func (w *Service) SendManualExecStageNotifications(workflowCtx *models.WorkflowT
 				TargetUsers: resolvedTargets,
 			}
 
-			title, content, card, webhookNotify, err := w.getNotificationContent(&notifyToSend, taskForNotification)
+			title, content, card, webhookNotify, err := w.getNotificationContentWithOptions(&notifyToSend, taskForNotification, &workflowNotificationOptions{
+				StatusTextKeyOverride: "taskStatusWaitingManualExec",
+				PendingStageName:      stageForNotification.Name,
+			})
 			if err != nil {
 				respErr = multierror.Append(respErr, err)
 				continue
@@ -511,7 +518,10 @@ func (w *Service) SendManualExecStageNotifications(workflowCtx *models.WorkflowT
 
 			notifyToSend := *notify
 			notifyToSend.MailNotificationConfig = &models.MailNotificationConfig{TargetUsers: resolvedUsers}
-			title, content, card, webhookNotify, err := w.getNotificationContent(&notifyToSend, taskForNotification)
+			title, content, card, webhookNotify, err := w.getNotificationContentWithOptions(&notifyToSend, taskForNotification, &workflowNotificationOptions{
+				StatusTextKeyOverride: "taskStatusWaitingManualExec",
+				PendingStageName:      stageForNotification.Name,
+			})
 			if err != nil {
 				respErr = multierror.Append(respErr, err)
 				continue
@@ -918,6 +928,15 @@ func (w *Service) getApproveNotificationContent(notify *models.NotifyCtl, task *
 
 // @note custom workflow task v4 notification
 func (w *Service) getNotificationContent(notify *models.NotifyCtl, task *models.WorkflowTask) (string, string, *LarkCard, *webhooknotify.WorkflowNotify, error) {
+	return w.getNotificationContentWithOptions(notify, task, nil)
+}
+
+type workflowNotificationOptions struct {
+	StatusTextKeyOverride string
+	PendingStageName      string
+}
+
+func (w *Service) getNotificationContentWithOptions(notify *models.NotifyCtl, task *models.WorkflowTask, opts *workflowNotificationOptions) (string, string, *LarkCard, *webhooknotify.WorkflowNotify, error) {
 	project, err := templaterepo.NewProductColl().Find(task.ProjectName)
 	if err != nil {
 		return "", "", nil, nil, fmt.Errorf("failed to find project %s, error: %v", task.ProjectName, err)
@@ -937,6 +956,10 @@ func (w *Service) getNotificationContent(notify *models.NotifyCtl, task *models.
 		BaseURI:            configbase.SystemAddress(),
 		WebHookType:        notify.WebHookType,
 		TotalTime:          time.Now().Unix() - task.StartTime,
+	}
+	if opts != nil {
+		workflowNotification.StatusTextKeyOverride = opts.StatusTextKeyOverride
+		workflowNotification.PendingStageName = opts.PendingStageName
 	}
 
 	if task.Type == config.WorkflowTaskTypeScanning {
@@ -968,12 +991,14 @@ func (w *Service) getNotificationContent(notify *models.NotifyCtl, task *models.
 
 	tplBaseInfo := []string{"{{if eq .WebHookType \"dingding\"}}##### {{end}}**{{getText \"notificationTextExecutor\"}}**：{{.Task.TaskCreator}}  \n",
 		"{{if eq .WebHookType \"dingding\"}}##### {{end}}**{{getText \"notificationTextProjectName\"}}**：{{.ProjectDisplayName}}  \n",
+		"{{if .PendingStageName}}{{if eq .WebHookType \"dingding\"}}##### {{end}}**{{getText \"notificationTextPendingStage\"}}**：{{.PendingStageName}}  \n{{end}}",
 		"{{if eq .WebHookType \"dingding\"}}##### {{end}}**{{getText \"notificationTextStartTime\"}}**：{{ getStartTime .Task.StartTime}}  \n",
 		"{{if eq .WebHookType \"dingding\"}}##### {{end}}**{{getText \"notificationTextDuration\"}}**：{{ getDuration .TotalTime}}  \n",
 		"{{if eq .WebHookType \"dingding\"}}##### {{end}}**{{getText \"notificationTextRemark\"}}**：{{.Task.Remark}} \n",
 	}
 	mailTplBaseInfo := []string{"{{getText \"notificationTextExecutor\"}}：{{.Task.TaskCreator}} \n",
 		"{{getText \"notificationTextProjectName\"}}：{{.ProjectDisplayName}} \n",
+		"{{if .PendingStageName}}{{getText \"notificationTextPendingStage\"}}：{{.PendingStageName}} \n{{end}}",
 		"{{getText \"notificationTextStartTime\"}}：{{ getStartTime .Task.StartTime}} \n",
 		"{{getText \"notificationTextDuration\"}}：{{ getDuration .TotalTime}} \n",
 		"{{getText \"notificationTextRemark\"}}：{{ .Task.Remark}} \n",
@@ -1109,13 +1134,15 @@ func (w *Service) getNotificationContent(notify *models.NotifyCtl, task *models.
 }
 
 type workflowTaskNotification struct {
-	Task               *models.WorkflowTask      `json:"task"`
-	ProjectDisplayName string                    `json:"project_display_name"`
-	EncodedDisplayName string                    `json:"encoded_display_name"`
-	BaseURI            string                    `json:"base_uri"`
-	WebHookType        setting.NotifyWebHookType `json:"web_hook_type"`
-	TotalTime          int64                     `json:"total_time"`
-	ScanningID         string                    `json:"scanning_id"`
+	Task                  *models.WorkflowTask      `json:"task"`
+	ProjectDisplayName    string                    `json:"project_display_name"`
+	EncodedDisplayName    string                    `json:"encoded_display_name"`
+	BaseURI               string                    `json:"base_uri"`
+	WebHookType           setting.NotifyWebHookType `json:"web_hook_type"`
+	TotalTime             int64                     `json:"total_time"`
+	ScanningID            string                    `json:"scanning_id"`
+	StatusTextKeyOverride string                    `json:"status_text_key_override"`
+	PendingStageName      string                    `json:"pending_stage_name"`
 }
 
 func getWorkflowTaskTplExec(tplcontent string, args *workflowTaskNotification) (string, error) {
@@ -1145,6 +1172,9 @@ func getWorkflowTaskTplExec(tplcontent string, args *workflowTaskNotification) (
 			}
 		},
 		"taskStatus": func(status config.Status) string {
+			if args != nil && args.StatusTextKeyOverride != "" {
+				return getText(args.StatusTextKeyOverride, language)
+			}
 			if status == config.StatusPassed {
 				return getText("taskStatusSuccess", language)
 			} else if status == config.StatusCancelled {
