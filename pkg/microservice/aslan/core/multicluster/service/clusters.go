@@ -100,9 +100,10 @@ type AdvancedConfig struct {
 	EnableIRSA        bool                `json:"enable_irsa"               bson:"enable_irsa"`
 	IRSARoleARM       string              `json:"irsa_role_arn"             bson:"irsa_role_arn"`
 
-	AgentNodeSelector string `json:"agent_node_selector"            bson:"agent_node_selector"`
-	AgentToleration   string `json:"agent_toleration"               bson:"agent_toleration"`
-	AgentAffinity     string `json:"agent_affinity"                 bson:"agent_affinity"`
+	AgentNodeSelector       string `json:"agent_node_selector"            bson:"agent_node_selector"`
+	AgentToleration         string `json:"agent_toleration"               bson:"agent_toleration"`
+	AgentAffinity           string `json:"agent_affinity"                 bson:"agent_affinity"`
+	AgentDisableHostNetwork bool   `json:"agent_disable_host_network"     bson:"agent_disable_host_network"`
 }
 
 type ScheduleStrategy struct {
@@ -229,13 +230,14 @@ func ListClusters(ids []string, projectName string, logger *zap.SugaredLogger) (
 		var advancedConfig *AdvancedConfig
 		if c.AdvancedConfig != nil {
 			advancedConfig = &AdvancedConfig{
-				Strategy:          c.AdvancedConfig.Strategy,
-				NodeLabels:        convertToNodeLabels(c.AdvancedConfig.NodeLabels),
-				ProjectNames:      GetProjectNames(c.ID.Hex(), logger),
-				AgentToleration:   c.AdvancedConfig.AgentToleration,
-				AgentNodeSelector: c.AdvancedConfig.AgentNodeSelector,
-				AgentAffinity:     c.AdvancedConfig.AgentAffinity,
-				ClusterAccessYaml: c.AdvancedConfig.ClusterAccessYaml,
+				Strategy:                c.AdvancedConfig.Strategy,
+				NodeLabels:              convertToNodeLabels(c.AdvancedConfig.NodeLabels),
+				ProjectNames:            GetProjectNames(c.ID.Hex(), logger),
+				AgentToleration:         c.AdvancedConfig.AgentToleration,
+				AgentNodeSelector:       c.AdvancedConfig.AgentNodeSelector,
+				AgentAffinity:           c.AdvancedConfig.AgentAffinity,
+				AgentDisableHostNetwork: c.AdvancedConfig.AgentDisableHostNetwork,
+				ClusterAccessYaml:       c.AdvancedConfig.ClusterAccessYaml,
 			}
 			if advancedConfig.ClusterAccessYaml != "" {
 				advancedConfig.ScheduleWorkflow = c.AdvancedConfig.ScheduleWorkflow
@@ -425,6 +427,10 @@ func UpdateCluster(ctx *handler.Context, id string, args *K8SCluster) (*commonmo
 	cluster.AdvancedConfig.ScheduleWorkflow = clusterArgs.AdvancedConfig.ScheduleWorkflow
 	cluster.AdvancedConfig.EnableIRSA = clusterArgs.AdvancedConfig.EnableIRSA
 	cluster.AdvancedConfig.IRSARoleARM = clusterArgs.AdvancedConfig.IRSARoleARM
+	cluster.AdvancedConfig.AgentNodeSelector = clusterArgs.AdvancedConfig.AgentNodeSelector
+	cluster.AdvancedConfig.AgentToleration = clusterArgs.AdvancedConfig.AgentToleration
+	cluster.AdvancedConfig.AgentAffinity = clusterArgs.AdvancedConfig.AgentAffinity
+	cluster.AdvancedConfig.AgentDisableHostNetwork = clusterArgs.AdvancedConfig.AgentDisableHostNetwork
 
 	// Delete all projects associated with clusterID
 	hasErr := false
@@ -1788,6 +1794,7 @@ func K8SClusterArgsToModel(args *K8SCluster) (*commonmodels.K8SCluster, error) {
 		advancedConfig.AgentToleration = args.AdvancedConfig.AgentToleration
 		advancedConfig.AgentNodeSelector = args.AdvancedConfig.AgentNodeSelector
 		advancedConfig.AgentAffinity = args.AdvancedConfig.AgentAffinity
+		advancedConfig.AgentDisableHostNetwork = args.AdvancedConfig.AgentDisableHostNetwork
 		advancedConfig.ClusterAccessYaml = args.AdvancedConfig.ClusterAccessYaml
 		advancedConfig.ScheduleWorkflow = args.AdvancedConfig.ScheduleWorkflow
 		advancedConfig.EnableIRSA = args.AdvancedConfig.EnableIRSA

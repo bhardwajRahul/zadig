@@ -78,9 +78,10 @@ type AdvancedConfig struct {
 	EnableIRSA        bool                       `json:"enable_irsa"              bson:"enable_irsa"`
 	IRSARoleARM       string                     `json:"irsa_role_arn"            bson:"irsa_role_arn"`
 
-	AgentNodeSelector string `json:"agent_node_selector"            bson:"agent_node_selector"`
-	AgentToleration   string `json:"agent_toleration"               bson:"agent_toleration"`
-	AgentAffinity     string `json:"agent_affinity"                 bson:"agent_affinity"`
+	AgentNodeSelector       string `json:"agent_node_selector"            bson:"agent_node_selector"`
+	AgentToleration         string `json:"agent_toleration"               bson:"agent_toleration"`
+	AgentAffinity           string `json:"agent_affinity"                 bson:"agent_affinity"`
+	AgentDisableHostNetwork bool   `json:"agent_disable_host_network"                 bson:"agent_disable_host_network"`
 }
 
 type ScheduleStrategy struct {
