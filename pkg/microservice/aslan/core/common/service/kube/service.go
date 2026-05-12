@@ -368,6 +368,7 @@ func (s *Service) GetYaml(id, agentImage, aslanURL, hubURI string, useDeployment
 			NodeSelector:         cluster.AdvancedConfig.AgentNodeSelector,
 			Toleration:           cluster.AdvancedConfig.AgentToleration,
 			Affinity:             cluster.AdvancedConfig.AgentAffinity,
+			DisableHostNetwork:   cluster.AdvancedConfig.AgentDisableHostNetwork,
 			ImagePullPolicy:      configbase.ImagePullPolicy(),
 			SecretKey:            base64.StdEncoding.EncodeToString([]byte(configbase.SecretKey())),
 		})
@@ -391,6 +392,7 @@ func (s *Service) GetYaml(id, agentImage, aslanURL, hubURI string, useDeployment
 			NodeSelector:         cluster.AdvancedConfig.AgentNodeSelector,
 			Toleration:           cluster.AdvancedConfig.AgentToleration,
 			Affinity:             cluster.AdvancedConfig.AgentAffinity,
+			DisableHostNetwork:   cluster.AdvancedConfig.AgentDisableHostNetwork,
 			IRSARoleARN:          cluster.AdvancedConfig.IRSARoleARM,
 			ImagePullPolicy:      configbase.ImagePullPolicy(),
 			SecretKey:            base64.StdEncoding.EncodeToString([]byte(configbase.SecretKey())),
@@ -697,6 +699,7 @@ type TemplateSchema struct {
 	NodeSelector         string
 	Toleration           string
 	Affinity             string
+	DisableHostNetwork   bool
 }
 
 const (
@@ -782,6 +785,12 @@ metadata:
     name: koderover-agent-node-agent
     namespace: koderover-agent
 spec:
+  {{- if .UseDeployment }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  {{- end }}
   selector:
     matchLabels:
       app: koderover-agent-agent
@@ -802,7 +811,7 @@ spec:
       affinity:
 {{indent 8 .Affinity}}
       {{- end }}
-      hostNetwork: true
+      hostNetwork: {{ if .DisableHostNetwork }}false{{ else }}true{{ end }}
       serviceAccountName: koderover-agent
       containers:
       - name: agent
@@ -972,6 +981,12 @@ metadata:
     name: koderover-agent-node-agent
     namespace: {{.Namespace}}
 spec:
+  {{- if .UseDeployment }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  {{- end }}
   selector:
     matchLabels:
       app: koderover-agent-agent
@@ -992,7 +1007,7 @@ spec:
       affinity:
 {{indent 8 .Affinity}}
       {{- end }}
-      hostNetwork: true
+      hostNetwork: {{ if .DisableHostNetwork }}false{{ else }}true{{ end }}
       serviceAccountName: koderover-agent-sa
       containers:
       - name: agent
