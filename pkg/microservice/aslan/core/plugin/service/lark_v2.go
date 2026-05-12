@@ -963,8 +963,19 @@ type LarkReleaseBindItem struct {
 	WorkItemName    string   `json:"work_item_name"`
 	WorkItemStatus  []string `json:"work_item_status,omitempty"`
 
-	Branch   string                            `json:"branch"`
-	Services []*commonmodels.ServiceWithModule `json:"services"`
+	Branch             string                            `json:"branch"`
+	BranchMerged       bool                              `json:"branch_merged"`
+	BranchMergeDetails []*LarkBranchMergeDetail          `json:"branch_merge_details,omitempty"`
+	Services           []*commonmodels.ServiceWithModule `json:"services"`
+}
+
+type LarkBranchMergeDetail struct {
+	ServiceName   string `json:"service_name"`
+	ServiceModule string `json:"service_module"`
+	SourceBranch  string `json:"source_branch"`
+	TargetBranch  string `json:"target_branch"`
+	Merged        bool   `json:"merged"`
+	Error         string `json:"error,omitempty"`
 }
 
 func ListLarkReleaseBindItemsV2(ctx *internalhandler.Context, workspaceID, releaseItemID string) (*ListLarkReleaseBindItemsV2Resp, error) {
@@ -1036,6 +1047,12 @@ func ListLarkReleaseBindItemsV2(ctx *internalhandler.Context, workspaceID, relea
 		}
 	}
 
+	releaseWorkflow, releaseWorkflowErr := getWorkflowFromWorkItem(ctx, workspaceID, releaseStageSetting.WorkItemTypeKey, releaseItemID)
+	if releaseWorkflowErr != nil {
+		ctx.Logger.Warnf("ListLarkReleaseBindItemsV2: failed to get release workflow for workitem %s: %v", releaseItemID, releaseWorkflowErr)
+	}
+	branchMergeChecker := newLarkBranchMergeChecker(ctx)
+
 	resp := make([]*LarkReleaseBindItem, 0)
 
 	for _, bind := range binds {
@@ -1051,20 +1068,65 @@ func ListLarkReleaseBindItemsV2(ctx *internalhandler.Context, workspaceID, relea
 		}
 
 		services := make([]*commonmodels.ServiceWithModule, 0)
+		mergeDetails := make([]*LarkBranchMergeDetail, 0)
 
 		configs, err := mongodb.NewLarkPluginWorkItemStageWorkflowInputConfigColl().GetByWorkItem(workspaceID, "dev", bind.WorkItemTypeKey, bind.WorkItemID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get stage service configs: %w", err)
 		}
 
+		branchMerged := len(configs) > 0 && releaseStageSetting.TargetBranch != ""
 		for _, cfg := range configs {
 			services = append(services, &commonmodels.ServiceWithModule{
 				ServiceName:   cfg.ServiceName,
 				ServiceModule: cfg.ServiceModule,
 			})
+
+			detail := &LarkBranchMergeDetail{
+				ServiceName:   cfg.ServiceName,
+				ServiceModule: cfg.ServiceModule,
+				SourceBranch:  cfg.Branch,
+				TargetBranch:  releaseStageSetting.TargetBranch,
+			}
+
+			if releaseWorkflowErr != nil {
+				detail.Error = "获取发布工作流失败"
+				branchMerged = false
+				mergeDetails = append(mergeDetails, detail)
+				continue
+			}
+
+			repo, err := getFirstRepoFromWorkflow(releaseWorkflow, cfg.ServiceName, cfg.ServiceModule)
+			if err != nil {
+				detail.Error = "获取服务代码库失败"
+				branchMerged = false
+				ctx.Logger.Warnf("ListLarkReleaseBindItemsV2: failed to resolve repo for %s/%s: %v", cfg.ServiceName, cfg.ServiceModule, err)
+				mergeDetails = append(mergeDetails, detail)
+				continue
+			}
+			ctx.Logger.Infof("ListLarkReleaseBindItemsV2: resolved repo for %s/%s, codehostID: %d, source: %s, namespace: %s, owner: %s, repo: %s, sourceBranch: %s, targetBranch: %s",
+				cfg.ServiceName, cfg.ServiceModule, repo.CodehostID, repo.Source, repo.RepoNamespace, repo.RepoOwner, repo.RepoName, cfg.Branch, releaseStageSetting.TargetBranch)
+
+			merged, err := branchMergeChecker.isBranchMerged(repo, cfg.Branch, releaseStageSetting.TargetBranch)
+			if err != nil {
+				detail.Error = "检测分支合并状态失败"
+				branchMerged = false
+				ctx.Logger.Warnf("ListLarkReleaseBindItemsV2: failed to check branch merge status for %s/%s %s -> %s: %v", cfg.ServiceName, cfg.ServiceModule, cfg.Branch, releaseStageSetting.TargetBranch, err)
+				mergeDetails = append(mergeDetails, detail)
+				continue
+			}
+
+			detail.Merged = merged
+			if !merged {
+				detail.Error = "源分支未合入目标分支"
+				branchMerged = false
+			}
+			mergeDetails = append(mergeDetails, detail)
 		}
 
 		item.Services = services
+		item.BranchMerged = branchMerged
+		item.BranchMergeDetails = mergeDetails
 		resp = append(resp, item)
 	}
 

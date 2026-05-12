@@ -32,6 +32,17 @@ type CodeHostClient interface {
 	ListCommits(opt ListOpt) ([]*Commit, error)
 }
 
+type BranchMergeChecker interface {
+	IsBranchMerged(opt BranchMergeCheckOpt) (bool, error)
+}
+
+type BranchMergeCheckOpt struct {
+	Namespace    string
+	ProjectName  string
+	SourceBranch string
+	TargetBranch string
+}
+
 type ListOpt struct {
 	Namespace     string
 	NamespaceType string

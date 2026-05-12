@@ -17,6 +17,8 @@ limitations under the License.
 package gitlab
 
 import (
+	"fmt"
+
 	"go.uber.org/zap"
 
 	gogitlab "github.com/xanzy/go-gitlab"
@@ -67,6 +69,22 @@ func (c *Client) ListBranches(opt client.ListOpt) ([]*client.Branch, error) {
 		})
 	}
 	return res, nil
+}
+
+func (c *Client) IsBranchMerged(opt client.BranchMergeCheckOpt) (bool, error) {
+	if opt.SourceBranch == opt.TargetBranch {
+		return true, nil
+	}
+
+	compare, _, err := c.Client.Repositories.Compare(fmt.Sprintf("%s/%s", opt.Namespace, opt.ProjectName), &gogitlab.CompareOptions{
+		From: &opt.TargetBranch,
+		To:   &opt.SourceBranch,
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return len(compare.Commits) == 0, nil
 }
 
 func (c *Client) ListTags(opt client.ListOpt) ([]*client.Tag, error) {

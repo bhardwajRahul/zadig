@@ -64,6 +64,19 @@ func (c *EEClient) ListBranches(opt client.ListOpt) ([]*client.Branch, error) {
 	return res, nil
 }
 
+func (c *EEClient) IsBranchMerged(opt client.BranchMergeCheckOpt) (bool, error) {
+	if opt.SourceBranch == opt.TargetBranch {
+		return true, nil
+	}
+
+	compare, err := c.Client.GetReposOwnerRepoCompareBaseHeadForEnterprise(c.Address, c.AccessToken, opt.Namespace, opt.ProjectName, opt.TargetBranch, opt.SourceBranch)
+	if err != nil {
+		return false, err
+	}
+
+	return len(compare.Commits) == 0, nil
+}
+
 func (c *EEClient) ListTags(opt client.ListOpt) ([]*client.Tag, error) {
 	tags, err := c.Client.ListTags(context.TODO(), c.Address, c.AccessToken, opt.Namespace, opt.ProjectName)
 	if err != nil {

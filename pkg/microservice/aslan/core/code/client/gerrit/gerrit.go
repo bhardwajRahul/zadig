@@ -17,6 +17,8 @@ limitations under the License.
 package gerrit
 
 import (
+	"fmt"
+
 	"github.com/koderover/zadig/v2/pkg/microservice/aslan/config"
 	"github.com/koderover/zadig/v2/pkg/microservice/aslan/core/code/client"
 	e "github.com/koderover/zadig/v2/pkg/tool/errors"
@@ -54,6 +56,53 @@ func (c *Client) ListBranches(opt client.ListOpt) ([]*client.Branch, error) {
 		})
 	}
 	return res, nil
+}
+
+func (c *Client) IsBranchMerged(opt client.BranchMergeCheckOpt) (bool, error) {
+	if opt.SourceBranch == opt.TargetBranch {
+		return true, nil
+	}
+
+	sourceCommit, err := c.Client.GetCommitByBranch(opt.ProjectName, opt.SourceBranch)
+	if err != nil {
+		return false, fmt.Errorf("failed to get source branch commit: %w", err)
+	}
+	targetCommit, err := c.Client.GetCommitByBranch(opt.ProjectName, opt.TargetBranch)
+	if err != nil {
+		return false, fmt.Errorf("failed to get target branch commit: %w", err)
+	}
+	if sourceCommit.Commit == targetCommit.Commit {
+		return true, nil
+	}
+
+	queue := []string{targetCommit.Commit}
+	visited := make(map[string]struct{})
+	for len(queue) > 0 {
+		revision := queue[0]
+		queue = queue[1:]
+		if _, ok := visited[revision]; ok {
+			continue
+		}
+		visited[revision] = struct{}{}
+		if revision == sourceCommit.Commit {
+			return true, nil
+		}
+
+		commit, err := c.Client.GetCommitByRevision(opt.ProjectName, revision)
+		if err != nil {
+			return false, fmt.Errorf("failed to get commit %s: %w", revision, err)
+		}
+		for _, parent := range commit.Parents {
+			if parent.Commit == sourceCommit.Commit {
+				return true, nil
+			}
+			if parent.Commit != "" {
+				queue = append(queue, parent.Commit)
+			}
+		}
+	}
+
+	return false, nil
 }
 
 func (c *Client) ListTags(opt client.ListOpt) ([]*client.Tag, error) {

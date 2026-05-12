@@ -19,13 +19,17 @@ package service
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/koderover/zadig/v2/pkg/config"
 	aslanconfig "github.com/koderover/zadig/v2/pkg/microservice/aslan/config"
+	"github.com/koderover/zadig/v2/pkg/microservice/aslan/core/code/client"
+	"github.com/koderover/zadig/v2/pkg/microservice/aslan/core/code/client/open"
 	"github.com/koderover/zadig/v2/pkg/microservice/aslan/core/common/repository/models"
 	commonmodels "github.com/koderover/zadig/v2/pkg/microservice/aslan/core/common/repository/models"
 	"github.com/koderover/zadig/v2/pkg/microservice/aslan/core/common/repository/mongodb"
 	commonservice "github.com/koderover/zadig/v2/pkg/microservice/aslan/core/common/service"
+	"github.com/koderover/zadig/v2/pkg/shared/client/systemconfig"
 	internalhandler "github.com/koderover/zadig/v2/pkg/shared/handler"
 	"github.com/koderover/zadig/v2/pkg/tool/larkplugin"
 	"github.com/koderover/zadig/v2/pkg/tool/meego"
@@ -195,4 +199,87 @@ func getFirstRepoFromWorkflow(workflow *models.WorkflowV4, serviceName, serviceM
 	}
 
 	return buildInfo.Repos[0], nil
+}
+
+type larkBranchMergeChecker struct {
+	ctx     *internalhandler.Context
+	clients map[int]client.CodeHostClient
+	cache   map[string]bool
+}
+
+func newLarkBranchMergeChecker(ctx *internalhandler.Context) *larkBranchMergeChecker {
+	return &larkBranchMergeChecker{
+		ctx:     ctx,
+		clients: make(map[int]client.CodeHostClient),
+		cache:   make(map[string]bool),
+	}
+}
+
+func (c *larkBranchMergeChecker) isBranchMerged(repo *types.Repository, sourceBranch, targetBranch string) (bool, error) {
+	if repo == nil {
+		return false, fmt.Errorf("repo is nil")
+	}
+	if sourceBranch == "" {
+		return false, fmt.Errorf("source branch is empty")
+	}
+	if targetBranch == "" {
+		return false, fmt.Errorf("target branch is empty")
+	}
+	if sourceBranch == targetBranch {
+		return true, nil
+	}
+
+	namespace := repo.RepoNamespace
+	if namespace == "" {
+		namespace = repo.RepoOwner
+	}
+	namespace = strings.Replace(namespace, "%2F", "/", -1)
+	cacheKey := fmt.Sprintf("%d:%s:%s:%s:%s", repo.CodehostID, namespace, repo.RepoName, sourceBranch, targetBranch)
+	if merged, ok := c.cache[cacheKey]; ok {
+		return merged, nil
+	}
+
+	codehostClient, err := c.getClient(repo.CodehostID)
+	if err != nil {
+		return false, err
+	}
+
+	mergeChecker, ok := codehostClient.(client.BranchMergeChecker)
+	if !ok {
+		return false, fmt.Errorf("codehost does not support branch merge check")
+	}
+	c.ctx.Logger.Infof("lark branch merge check start, codehostID: %d, namespace: %s, repo: %s, sourceBranch: %s, targetBranch: %s",
+		repo.CodehostID, namespace, repo.RepoName, sourceBranch, targetBranch)
+
+	merged, err := mergeChecker.IsBranchMerged(client.BranchMergeCheckOpt{
+		Namespace:    namespace,
+		ProjectName:  repo.RepoName,
+		SourceBranch: sourceBranch,
+		TargetBranch: targetBranch,
+	})
+	if err != nil {
+		return false, err
+	}
+	c.cache[cacheKey] = merged
+
+	return merged, nil
+}
+
+func (c *larkBranchMergeChecker) getClient(codehostID int) (client.CodeHostClient, error) {
+	if codehostClient, ok := c.clients[codehostID]; ok {
+		return codehostClient, nil
+	}
+
+	ch, err := systemconfig.New().GetCodeHost(codehostID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get codehost info: %w", err)
+	}
+
+	codehostClient, err := open.OpenClient(ch, c.ctx.Logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open codehost client: %w", err)
+	}
+
+	c.clients[codehostID] = codehostClient
+	return codehostClient, nil
 }

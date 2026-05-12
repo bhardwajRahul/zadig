@@ -156,6 +156,12 @@ func (c *Client) GetCommitByBranch(project string, branch string) (*gerrit.Commi
 	return commit, err
 }
 
+func (c *Client) GetCommitByRevision(project string, revision string) (*gerrit.CommitInfo, error) {
+	project = Unescape(project)
+	commit, _, err := c.cli.Projects.GetCommit(project, revision)
+	return commit, err
+}
+
 func (c *Client) GetCommitByTag(project string, tag string) (*gerrit.CommitInfo, error) {
 	project = Unescape(project)
 	tagInfo, _, err := c.cli.Projects.GetTag(project, tag)
