@@ -1720,6 +1720,7 @@ func openAPIListServicePods(c *gin.Context, production bool) {
 			return
 		}
 
+		// check production env permission
 		if production {
 			if !ctx.Resources.ProjectAuthInfo[projectName].IsProjectAdmin &&
 				!ctx.Resources.ProjectAuthInfo[projectName].ProductionEnv.View {
