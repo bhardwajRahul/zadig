@@ -590,6 +590,9 @@ func (j ScanningJobController) toJobTask(jobSubTaskID int, scanning *commonmodel
 		jobTaskSpec.Properties.CacheEnable = scanningInfo.AdvancedSetting.Cache.CacheEnable
 		jobTaskSpec.Properties.CacheDirType = scanningInfo.AdvancedSetting.Cache.CacheDirType
 		jobTaskSpec.Properties.CacheUserDir = scanningInfo.AdvancedSetting.Cache.CacheUserDir
+		if jobTaskSpec.Properties.CacheEnable {
+			jobTaskSpec.Properties.CacheUserDir = commonutil.RenderEnv(jobTaskSpec.Properties.CacheUserDir, jobTaskSpec.Properties.Envs)
+		}
 	} else {
 		if clusterInfo.Cache.MediumType == "" {
 			jobTaskSpec.Properties.CacheEnable = false

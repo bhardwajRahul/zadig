@@ -437,6 +437,9 @@ func (j BuildJobController) ToTask(taskID int64) ([]*commonmodels.JobTask, error
 			jobTaskSpec.Properties.CacheEnable = buildInfo.CacheEnable
 			jobTaskSpec.Properties.CacheDirType = buildInfo.CacheDirType
 			jobTaskSpec.Properties.CacheUserDir = buildInfo.CacheUserDir
+			if jobTaskSpec.Properties.CacheEnable {
+				jobTaskSpec.Properties.CacheUserDir = commonutil.RenderEnv(jobTaskSpec.Properties.CacheUserDir, jobTaskSpec.Properties.Envs)
+			}
 		} else {
 			clusterInfo, err := commonrepo.NewK8SClusterColl().Get(buildInfo.PreBuild.ClusterID)
 			if err != nil {
