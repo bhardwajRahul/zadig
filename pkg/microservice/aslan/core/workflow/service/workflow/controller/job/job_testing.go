@@ -953,7 +953,7 @@ func (j TestingJobController) toJobTask(jobSubTaskID int, testing *commonmodels.
 		jobTaskSpec.Steps = append(jobTaskSpec.Steps, archiveStep)
 	}
 
-	appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec, &jobTaskSpec.Steps, fmt.Sprintf("%s-%s", testing.Name, "ignore-cache-sync"), jobTask.Name)
+	appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec, &jobTaskSpec.Steps, jobTask.Infrastructure, fmt.Sprintf("%s-%s", testing.Name, "ignore-cache-sync"), jobTask.Name)
 
 	renderedTask, err := replaceServiceAndModulesForTask(jobTask, serviceName, serviceModule)
 	if err != nil {

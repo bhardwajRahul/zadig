@@ -120,8 +120,7 @@ func shouldBypassNFSMountForIgnoreCache(jobTaskSpec *commonmodels.JobTaskFreesty
 	return jobTaskSpec != nil &&
 		jobTaskSpec.Properties.CacheEnable &&
 		jobTaskSpec.Properties.IgnoreCache &&
-		jobTaskSpec.Properties.Cache.MediumType == types.NFSMedium &&
-		!jobTaskSpec.Properties.UseHostDockerDaemon
+		jobTaskSpec.Properties.Cache.MediumType == types.NFSMedium
 }
 
 func shouldSkipObjectCacheRestore(jobTaskSpec *commonmodels.JobTaskFreestyleSpec) bool {
@@ -152,8 +151,8 @@ func buildIgnoreCacheNFSSyncStep(stepName, jobName, srcDir string) *commonmodels
 	}
 }
 
-func appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec *commonmodels.JobTaskFreestyleSpec, steps *[]*commonmodels.StepTask, stepName, jobName string) {
-	if !shouldBypassNFSMountForIgnoreCache(jobTaskSpec) {
+func appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec *commonmodels.JobTaskFreestyleSpec, steps *[]*commonmodels.StepTask, infrastructure, stepName, jobName string) {
+	if infrastructure == setting.JobVMInfrastructure || !shouldBypassNFSMountForIgnoreCache(jobTaskSpec) {
 		return
 	}
 	cacheDir := resolveRuntimeCacheDir(jobTaskSpec.Properties.CacheDirType, jobTaskSpec.Properties.CacheUserDir)

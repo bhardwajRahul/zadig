@@ -951,7 +951,7 @@ func (j ScanningJobController) toJobTask(jobSubTaskID int, scanning *commonmodel
 
 	jobTaskSpec.Steps = append(jobTaskSpec.Steps, debugAfterStep)
 
-	appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec, &jobTaskSpec.Steps, fmt.Sprintf("%s-%s", scanning.Name, "ignore-cache-sync"), jobTask.Name)
+	appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec, &jobTaskSpec.Steps, jobTask.Infrastructure, fmt.Sprintf("%s-%s", scanning.Name, "ignore-cache-sync"), jobTask.Name)
 
 	renderedTask, err := replaceServiceAndModulesForTask(jobTask, serviceName, serviceModule)
 	if err != nil {

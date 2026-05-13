@@ -718,7 +718,7 @@ func (j BuildJobController) ToTask(taskID int64) ([]*commonmodels.JobTask, error
 			jobTaskSpec.Steps = append(jobTaskSpec.Steps, shellStep)
 		}
 
-		appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec, &jobTaskSpec.Steps, fmt.Sprintf("%s-%s", build.ServiceName, "ignore-cache-sync"), jobTask.Name)
+		appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec, &jobTaskSpec.Steps, jobTask.Infrastructure, fmt.Sprintf("%s-%s", build.ServiceName, "ignore-cache-sync"), jobTask.Name)
 
 		renderedTask, err := replaceServiceAndModulesForTask(jobTask, build.ServiceName, build.ServiceModule)
 		if err != nil {
