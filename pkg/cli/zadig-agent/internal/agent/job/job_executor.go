@@ -320,7 +320,10 @@ func (e *JobExecutor) AfterExecute() error {
 	if e.JobCtx.Cache != nil && e.JobCtx.Cache.CacheEnable {
 		src := e.Dirs.Workspace
 		if e.JobCtx.Cache.CacheDirType == common.CacheDirUserDefineType && e.JobCtx.Cache.CacheUserDir != "" {
-			src = filepath.Join(e.Dirs.Workspace, e.JobCtx.Cache.CacheUserDir)
+			src = e.JobCtx.Cache.CacheUserDir
+			if !filepath.IsAbs(src) {
+				src = filepath.Join(e.Dirs.Workspace, src)
+			}
 		}
 
 		if _, err := os.Stat(src); os.IsNotExist(err) {
