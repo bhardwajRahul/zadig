@@ -305,6 +305,7 @@ func (*OpenAPIRouter) Inject(router *gin.RouterGroup) {
 		common.PUT("/:name/variable", OpenAPIUpdateGlobalVariables)
 
 		common.GET("/:name/services/:serviceName", OpenAPIGetService)
+		common.GET("/:name/services/:serviceName/pods", OpenAPIListServicePods)
 		common.POST("/:name/service/:serviceName/restart", OpenAPIRestartService)
 		common.POST("/:name/services/:serviceName/pod/restart", OpenAPIRestartServicePod)
 
@@ -346,6 +347,7 @@ func (*OpenAPIRouter) Inject(router *gin.RouterGroup) {
 		production.PUT("/:name/variable", OpenAPIUpdateProductionGlobalVariables)
 
 		production.GET("/:name/services/:serviceName", OpenAPIGetProductionService)
+		production.GET("/:name/services/:serviceName/pods", OpenAPIListProductionServicePods)
 		production.POST("/:name/service/:serviceName/restart", OpenAPIProductionRestartService)
 		production.POST("/:name/services/:serviceName/pod/restart", OpenAPIProductionRestartServicePod)
 
