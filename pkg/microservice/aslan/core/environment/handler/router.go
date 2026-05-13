@@ -306,11 +306,12 @@ func (*OpenAPIRouter) Inject(router *gin.RouterGroup) {
 
 		common.GET("/:name/services/:serviceName", OpenAPIGetService)
 		common.POST("/:name/service/:serviceName/restart", OpenAPIRestartService)
+		common.POST("/:name/services/:serviceName/pod/restart", OpenAPIRestartServicePod)
 
 		// openapi for single pod restarting and getting its details in common env
-		common.GET("/:name/pods", OpenAPIListPodsInfo)
-		common.GET("/:name/pods/:podName", OpenAPIGetPodDetailInfo)
-		common.POST("/:name/pods/:podName/restart", OpenAPIRestartPod)
+		// common.GET("/:name/pods", OpenAPIListPodsInfo)
+		// common.GET("/:name/pods/:podName", OpenAPIGetPodDetailInfo)
+		// common.POST("/:name/pods/:podName/restart", OpenAPIRestartPod)
 
 		common.GET("/:name/check/workloads/k8services", OpenAPICheckWorkloadsK8sServices)
 		common.POST("/:name/share/enable", OpenAPIEnableBaseEnv)
@@ -346,11 +347,12 @@ func (*OpenAPIRouter) Inject(router *gin.RouterGroup) {
 
 		production.GET("/:name/services/:serviceName", OpenAPIGetProductionService)
 		production.POST("/:name/service/:serviceName/restart", OpenAPIProductionRestartService)
-		
+		production.POST("/:name/services/:serviceName/pod/restart", OpenAPIProductionRestartServicePod)
+
 		// openapi for single pod restarting and getting its details in production env
-		production.GET("/:name/pods", OpenAPIListProductionPodsInfo)
-		production.GET("/:name/pods/:podName", OpenAPIGetProductionPodDetailInfo)
-		production.POST("/:name/pods/:podName/restart", OpenAPIProductionRestartPod)
+		// production.GET("/:name/pods", OpenAPIListProductionPodsInfo)
+		// production.GET("/:name/pods/:podName", OpenAPIGetProductionPodDetailInfo)
+		// production.POST("/:name/pods/:podName/restart", OpenAPIProductionRestartPod)
 	}
 
 	helm := router.Group("helm")

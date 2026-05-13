@@ -530,6 +530,32 @@ type OpenAPIEnvDetail struct {
 	Status          string                            `json:"status"`
 }
 
+type OpenAPIServicePodInfo struct {
+	PodName         string   `json:"pod_name"`
+	Status          string   `json:"status"`
+	PodReady        bool     `json:"pod_ready"`
+	ContainersReady bool     `json:"containers_ready"`
+	CreateTime      int64    `json:"create_time"`
+	IP              string   `json:"ip"`
+	Images          []string `json:"images"`
+	WorkloadName    string   `json:"workload_name"`
+	WorkloadType    string   `json:"workload_type"`
+}
+
+type OpenAPIListServicePodsResponse struct {
+	ServiceName string                   `json:"service_name"`
+	Pods        []*OpenAPIServicePodInfo `json:"pods"`
+}
+
+type OpenAPIRestartServicePodRequest struct {
+	PodName string `json:"pod_name"`
+}
+
+type OpenAPIRestartServicePodResponse struct {
+	ServiceName string `json:"service_name"`
+	PodName     string `json:"pod_name"`
+}
+
 type EnvBasicInfoArgs struct {
 	RegistryID string `json:"registry_id"`
 	Alias      string `json:"env_name"`

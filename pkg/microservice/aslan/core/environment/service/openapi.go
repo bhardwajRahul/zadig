@@ -147,6 +147,89 @@ func OpenAPIRestartService(projectName, envName, serviceName string, production 
 	return RestartService(envName, args, production, logger)
 }
 
+func OpenAPIListServicePods(projectName, envName, serviceName string, production bool, logger *zap.SugaredLogger) (*OpenAPIListServicePodsResponse, error) {
+	serviceResp, err := GetService(envName, projectName, serviceName, production, "", logger)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &OpenAPIListServicePodsResponse{
+		ServiceName: serviceName,
+		Pods:        make([]*OpenAPIServicePodInfo, 0),
+	}
+	seen := make(map[string]struct{})
+
+	for _, scale := range serviceResp.Scales {
+		if scale == nil {
+			continue
+		}
+		for _, pod := range scale.Pods {
+			if pod == nil || pod.Name == "" {
+				continue
+			}
+			if _, ok := seen[pod.Name]; ok {
+				continue
+			}
+			seen[pod.Name] = struct{}{}
+
+			images := make([]string, 0, len(pod.Containers))
+			for _, c := range pod.Containers {
+				images = append(images, c.Image)
+			}
+
+			resp.Pods = append(resp.Pods, &OpenAPIServicePodInfo{
+				PodName:         pod.Name,
+				Status:          pod.Status,
+				PodReady:        pod.PodReady,
+				ContainersReady: pod.ContainersReady,
+				CreateTime:      pod.CreateTime,
+				IP:              pod.IP,
+				Images:          images,
+				WorkloadName:    scale.Name,
+				WorkloadType:    scale.Type,
+			})
+		}
+	}
+
+	return resp, nil
+}
+
+func OpenAPIRestartServicePod(projectName, envName, serviceName string, req *OpenAPIRestartServicePodRequest, production bool, logger *zap.SugaredLogger) (*OpenAPIRestartServicePodResponse, error) {
+	if req == nil || req.PodName == "" {
+		return nil, e.ErrInvalidParam.AddDesc("pod_name is empty")
+	}
+
+	podsResp, err := OpenAPIListServicePods(projectName, envName, serviceName, production, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	found := false
+	for _, pod := range podsResp.Pods {
+		if pod != nil && pod.PodName == req.PodName {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return nil, e.ErrGetPodDetail.AddDesc(fmt.Sprintf("pod %s not found in service %s", req.PodName, serviceName))
+	}
+
+	// check pod is existed or not
+	if _, err := GetPodDetailInfo(projectName, envName, req.PodName, production, logger); err != nil {
+		return nil, err
+	}
+
+	if err := DeletePod(envName, projectName, req.PodName, production, logger); err != nil {
+		return nil, err
+	}
+
+	return &OpenAPIRestartServicePodResponse{
+		ServiceName: serviceName,
+		PodName:     req.PodName,
+	}, nil
+}
+
 func OpenAPIGetGlobalVariables(projectName, envName string, production bool, logger *zap.SugaredLogger) ([]*commontypes.GlobalVariableKV, error) {
 	env, err := commonrepo.NewProductColl().Find(&commonrepo.ProductFindOptions{
 		Name:       projectName,
