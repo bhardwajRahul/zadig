@@ -526,7 +526,7 @@ EOF`,
 		if jobTaskSpec.Properties.CacheDirType == commontypes.WorkspaceCacheDir {
 			mountPath = workflowCtx.Workspace
 		}
-		if jobTaskSpec.Properties.IgnoreCache {
+		if jobTaskSpec.Properties.IgnoreCache && !jobTaskSpec.Properties.UseHostDockerDaemon {
 			job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
 				Name: ignoreCacheRuntimeVolumeName,
 				VolumeSource: corev1.VolumeSource{

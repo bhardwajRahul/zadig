@@ -120,7 +120,8 @@ func shouldBypassNFSMountForIgnoreCache(jobTaskSpec *commonmodels.JobTaskFreesty
 	return jobTaskSpec != nil &&
 		jobTaskSpec.Properties.CacheEnable &&
 		jobTaskSpec.Properties.IgnoreCache &&
-		jobTaskSpec.Properties.Cache.MediumType == types.NFSMedium
+		jobTaskSpec.Properties.Cache.MediumType == types.NFSMedium &&
+		!jobTaskSpec.Properties.UseHostDockerDaemon
 }
 
 func shouldSkipObjectCacheRestore(jobTaskSpec *commonmodels.JobTaskFreestyleSpec) bool {
