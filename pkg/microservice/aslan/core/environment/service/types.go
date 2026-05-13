@@ -547,13 +547,8 @@ type OpenAPIListServicePodsResponse struct {
 	Pods        []*OpenAPIServicePodInfo `json:"pods"`
 }
 
-type OpenAPIRestartServicePodRequest struct {
-	PodName string `json:"pod_name"`
-}
-
 type OpenAPIRestartServicePodResponse struct {
-	ServiceName string `json:"service_name"`
-	PodName     string `json:"pod_name"`
+	Message string `json:"message"`
 }
 
 type EnvBasicInfoArgs struct {

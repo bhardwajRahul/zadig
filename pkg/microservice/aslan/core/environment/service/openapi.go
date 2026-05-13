@@ -194,39 +194,19 @@ func OpenAPIListServicePods(projectName, envName, serviceName string, production
 	return resp, nil
 }
 
-func OpenAPIRestartServicePod(projectName, envName, serviceName string, req *OpenAPIRestartServicePodRequest, production bool, logger *zap.SugaredLogger) (*OpenAPIRestartServicePodResponse, error) {
-	if req == nil || req.PodName == "" {
-		return nil, e.ErrInvalidParam.AddDesc("pod_name is empty")
-	}
-
-	podsResp, err := OpenAPIListServicePods(projectName, envName, serviceName, production, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	found := false
-	for _, pod := range podsResp.Pods {
-		if pod != nil && pod.PodName == req.PodName {
-			found = true
-			break
-		}
-	}
-	if !found {
-		return nil, e.ErrGetPodDetail.AddDesc(fmt.Sprintf("pod %s not found in service %s", req.PodName, serviceName))
-	}
+func OpenAPIRestartServicePod(projectName, envName, serviceName, podName string, production bool, logger *zap.SugaredLogger) (*OpenAPIRestartServicePodResponse, error) {
 
 	// check pod is existed or not
-	if _, err := GetPodDetailInfo(projectName, envName, req.PodName, production, logger); err != nil {
+	if _, err := GetPodDetailInfo(projectName, envName, podName, production, logger); err != nil {
 		return nil, err
 	}
 
-	if err := DeletePod(envName, projectName, req.PodName, production, logger); err != nil {
+	if err := DeletePod(envName, projectName, podName, production, logger); err != nil {
 		return nil, err
 	}
 
 	return &OpenAPIRestartServicePodResponse{
-		ServiceName: serviceName,
-		PodName:     req.PodName,
+		Message: "success",
 	}, nil
 }
 
