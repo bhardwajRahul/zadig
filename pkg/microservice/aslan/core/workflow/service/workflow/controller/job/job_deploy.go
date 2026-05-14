@@ -632,7 +632,6 @@ func (j DeployJobController) ToTask(taskID int64) ([]*commonmodels.JobTask, erro
 	}
 
 	if j.jobSpec.DeployType == setting.HelmDeployType {
-		log.Debugf("value sync strategy: %s", j.jobSpec.ValueSyncStrategy)
 		for jobSubTaskID, svc := range j.jobSpec.Services {
 			var serviceRevision int64
 			var autoSyncFlag bool
@@ -695,10 +694,12 @@ func (j DeployJobController) ToTask(taskID int64) ([]*commonmodels.JobTask, erro
 			}
 
 			if autoSyncFlag || j.jobSpec.ValueSyncStrategy == config.ValueSyncStrategyAuto {
+				pSvc.GetServiceRender().SetAutoSync(true)
 				_, values, err := commonservice.SyncYamlFromSource(pSvc.GetServiceRender().OverrideYaml, pSvc.GetServiceRender().OverrideYaml.YamlContent, pSvc.GetServiceRender().OverrideYaml.AutoSyncYaml)
 				if err != nil {
 					return nil, fmt.Errorf("failed to sync values for service: %s, error: %s", svc.ServiceName, err)
 				}
+				pSvc.GetServiceRender().SetAutoSync(autoSyncFlag)
 				jobTaskSpec.UpdateConfig = svc.UpdateConfig
 				jobTaskSpec.VariableYaml = values
 				jobTaskSpec.UserSuppliedValue = values
@@ -1128,7 +1129,6 @@ func generateDeployInfoForEnv(env, project string, production bool, configuredSe
 		}
 
 		if projectInfo.IsHelmProduct() {
-			log.Debugf("ovrrideYaml: %+v", envServiceMap[service.ServiceName].GetServiceRender().OverrideYaml.SourceDetail)
 			sourceGitRepo, err := commonservice.UnMarshalSourceDetail(envServiceMap[service.ServiceName].GetServiceRender().OverrideYaml.SourceDetail)
 			if err != nil {
 				return nil, fmt.Errorf("failed to unmarshal source detail, error: %s", err)

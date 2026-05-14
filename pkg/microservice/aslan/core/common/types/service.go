@@ -16,8 +16,11 @@ limitations under the License.
 
 package types
 
+import "github.com/koderover/zadig/v2/pkg/setting"
+
 type ServiceWithVariable struct {
-	ServiceName  string              `json:"service_name"`
-	VariableYaml string              `json:"variable_yaml"`
-	VariableKVs  []*RenderVariableKV `json:"variable_kvs"`
+	ServiceName    string                        `json:"service_name"`
+	VariableYaml   string                        `json:"variable_yaml"`
+	VariableKVs    []*RenderVariableKV           `json:"variable_kvs"`
+	DeployStrategy setting.ServiceDeployStrategy `json:"deploy_strategy"`
 }

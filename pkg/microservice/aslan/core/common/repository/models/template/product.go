@@ -347,6 +347,13 @@ func (rc *ServiceRender) GetAutoSync() bool {
 	return rc.OverrideYaml.AutoSync
 }
 
+func (rc *ServiceRender) SetAutoSync(autosync bool) {
+	if rc.OverrideYaml == nil {
+		rc.OverrideYaml = &CustomYaml{}
+	}
+	rc.OverrideYaml.AutoSync = autosync
+}
+
 func (rc *ServiceRender) GetAutoSyncYaml() string {
 	if rc.OverrideYaml == nil {
 		return ""

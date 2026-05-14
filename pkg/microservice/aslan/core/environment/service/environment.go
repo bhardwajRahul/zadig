@@ -2167,7 +2167,7 @@ func UpdateProductVariable(productName, envName, username, requestID string, upd
 			if commonutil.DeployStrategyIsFromDraftToDeploy(rc.ServiceName, productResp.ServiceDeployStrategy, newDeployStrategyMap) {
 				needUpdateStrategy = true
 				commonutil.SetChartDeployed(rc, productResp.ServiceDeployStrategy)
-			} else if !commonutil.ChartDeployed(rc, newDeployStrategyMap) {
+			} else if !commonutil.ChartDeployed(rc, productResp.ServiceDeployStrategy) {
 				needUpdateStrategy = true
 				commonutil.SetChartDeployed(rc, productResp.ServiceDeployStrategy)
 			}

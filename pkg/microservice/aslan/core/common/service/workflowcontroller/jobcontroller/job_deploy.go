@@ -350,6 +350,11 @@ func (c *DeployJobCtl) updateSystemService(env *commonmodels.Product, currentYam
 		return errors.New(err.Error())
 	}
 
+	forceUpdateYaml := false
+	if env.ServiceDeployStrategy[serviceName] == setting.ServiceDeployStrategyDraft {
+		forceUpdateYaml = true
+	}
+
 	unstructuredList, err := kube.CreateOrPatchResource(&kube.ResourceApplyParam{
 		ServiceName:         c.jobTaskSpec.ServiceName,
 		CurrentResourceYaml: currentYaml,
@@ -362,6 +367,7 @@ func (c *DeployJobCtl) updateSystemService(env *commonmodels.Product, currentYam
 		ProductInfo:         env,
 		JobLogContext:       &joblog.JobLogContext{WorkflowCtx: c.workflowCtx, JobTask: c.job},
 		OverrideResource:    overrideResource,
+		ForceUpdateYaml:     forceUpdateYaml,
 	}, c.logger)
 
 	if err != nil {
