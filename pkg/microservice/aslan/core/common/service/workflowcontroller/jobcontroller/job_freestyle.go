@@ -1365,6 +1365,8 @@ func BuildJobExecutorContext(jobTaskSpec *commonmodels.JobTaskFreestyleSpec, job
 			CacheEnable:  jobTaskSpec.Properties.CacheEnable,
 			CacheDirType: jobTaskSpec.Properties.CacheDirType,
 			CacheUserDir: jobTaskSpec.Properties.CacheUserDir,
+			IgnoreCache:  jobTaskSpec.Properties.IgnoreCache,
+			MediumType:   jobTaskSpec.Properties.Cache.MediumType,
 		}
 	}
 
