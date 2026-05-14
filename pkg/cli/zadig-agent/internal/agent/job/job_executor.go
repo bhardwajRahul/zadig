@@ -35,7 +35,6 @@ import (
 	"github.com/koderover/zadig/v2/pkg/cli/zadig-agent/internal/common/types"
 	"github.com/koderover/zadig/v2/pkg/cli/zadig-agent/internal/network"
 	jobctl "github.com/koderover/zadig/v2/pkg/microservice/aslan/core/common/service/workflowcontroller/jobcontroller"
-	commontypes "github.com/koderover/zadig/v2/pkg/types"
 	"github.com/koderover/zadig/v2/pkg/types/job"
 )
 
@@ -157,7 +156,7 @@ func (e *JobExecutor) InitWorkDirectory() error {
 	}
 
 	// check the job whether job use cache and init workspace by cache
-	if e.JobCtx.Cache != nil && e.JobCtx.Cache.CacheEnable && !(e.JobCtx.Cache.IgnoreCache && e.JobCtx.Cache.MediumType == commontypes.ObjectMedium) {
+	if e.JobCtx.Cache != nil && e.JobCtx.Cache.CacheEnable {
 		ReadCache(*e.Job, filepath.Dir(e.Dirs.Workspace), e.Dirs.CacheDir, log.GetSimpleLogger())
 	}
 

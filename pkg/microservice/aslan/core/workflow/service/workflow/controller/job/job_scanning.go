@@ -587,13 +587,11 @@ func (j ScanningJobController) toJobTask(jobSubTaskID int, scanning *commonmodel
 	}
 
 	if jobTask.Infrastructure == setting.JobVMInfrastructure {
-		jobTaskSpec.Properties.Cache = clusterInfo.Cache
 		jobTaskSpec.Properties.CacheEnable = scanningInfo.AdvancedSetting.Cache.CacheEnable
 		jobTaskSpec.Properties.CacheDirType = scanningInfo.AdvancedSetting.Cache.CacheDirType
 		jobTaskSpec.Properties.CacheUserDir = scanningInfo.AdvancedSetting.Cache.CacheUserDir
 		if jobTaskSpec.Properties.CacheEnable {
 			jobTaskSpec.Properties.CacheUserDir = commonutil.RenderEnv(jobTaskSpec.Properties.CacheUserDir, jobTaskSpec.Properties.Envs)
-			jobTaskSpec.Properties.IgnoreCache = j.workflow.IgnoreCache
 		}
 	} else {
 		if clusterInfo.Cache.MediumType == "" {
@@ -956,7 +954,7 @@ func (j ScanningJobController) toJobTask(jobSubTaskID int, scanning *commonmodel
 
 	jobTaskSpec.Steps = append(jobTaskSpec.Steps, debugAfterStep)
 
-	appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec, &jobTaskSpec.Steps, fmt.Sprintf("%s-%s", scanning.Name, "ignore-cache-sync"), jobTask.Name)
+	appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec, &jobTaskSpec.Steps, jobTask.Infrastructure, fmt.Sprintf("%s-%s", scanning.Name, "ignore-cache-sync"), jobTask.Name)
 
 	renderedTask, err := replaceServiceAndModulesForTask(jobTask, serviceName, serviceModule)
 	if err != nil {

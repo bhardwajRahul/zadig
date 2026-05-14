@@ -433,21 +433,19 @@ func (j BuildJobController) ToTask(taskID int64) ([]*commonmodels.JobTask, error
 		}
 
 		cacheS3 := &commonmodels.S3Storage{}
-		clusterInfo, err := commonrepo.NewK8SClusterColl().Get(buildInfo.PreBuild.ClusterID)
-		if err != nil {
-			return nil, fmt.Errorf("find cluster: %s error: %v", buildInfo.PreBuild.ClusterID, err)
-		}
-
 		if jobTask.Infrastructure == setting.JobVMInfrastructure {
-			jobTaskSpec.Properties.Cache = clusterInfo.Cache
 			jobTaskSpec.Properties.CacheEnable = buildInfo.CacheEnable
 			jobTaskSpec.Properties.CacheDirType = buildInfo.CacheDirType
 			jobTaskSpec.Properties.CacheUserDir = buildInfo.CacheUserDir
 			if jobTaskSpec.Properties.CacheEnable {
 				jobTaskSpec.Properties.CacheUserDir = commonutil.RenderEnv(jobTaskSpec.Properties.CacheUserDir, jobTaskSpec.Properties.Envs)
-				jobTaskSpec.Properties.IgnoreCache = j.workflow.IgnoreCache
 			}
 		} else {
+			clusterInfo, err := commonrepo.NewK8SClusterColl().Get(buildInfo.PreBuild.ClusterID)
+			if err != nil {
+				return nil, fmt.Errorf("find cluster: %s error: %v", buildInfo.PreBuild.ClusterID, err)
+			}
+
 			if clusterInfo.Cache.MediumType == "" {
 				jobTaskSpec.Properties.CacheEnable = false
 			} else {
@@ -723,7 +721,7 @@ func (j BuildJobController) ToTask(taskID int64) ([]*commonmodels.JobTask, error
 			jobTaskSpec.Steps = append(jobTaskSpec.Steps, shellStep)
 		}
 
-		appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec, &jobTaskSpec.Steps, fmt.Sprintf("%s-%s", build.ServiceName, "ignore-cache-sync"), jobTask.Name)
+		appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec, &jobTaskSpec.Steps, jobTask.Infrastructure, fmt.Sprintf("%s-%s", build.ServiceName, "ignore-cache-sync"), jobTask.Name)
 
 		renderedTask, err := replaceServiceAndModulesForTask(jobTask, build.ServiceName, build.ServiceModule)
 		if err != nil {

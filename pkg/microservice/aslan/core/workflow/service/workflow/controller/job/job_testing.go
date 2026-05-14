@@ -677,13 +677,11 @@ func (j TestingJobController) toJobTask(jobSubTaskID int, testing *commonmodels.
 	}
 
 	if jobTask.Infrastructure == setting.JobVMInfrastructure {
-		jobTaskSpec.Properties.Cache = clusterInfo.Cache
 		jobTaskSpec.Properties.CacheEnable = testingInfo.CacheEnable
 		jobTaskSpec.Properties.CacheDirType = testingInfo.CacheDirType
 		jobTaskSpec.Properties.CacheUserDir = testingInfo.CacheUserDir
 		if jobTaskSpec.Properties.CacheEnable {
 			jobTaskSpec.Properties.CacheUserDir = commonutil.RenderEnv(jobTaskSpec.Properties.CacheUserDir, jobTaskSpec.Properties.Envs)
-			jobTaskSpec.Properties.IgnoreCache = j.workflow.IgnoreCache
 		}
 	} else {
 		if clusterInfo.Cache.MediumType == "" {
@@ -958,7 +956,7 @@ func (j TestingJobController) toJobTask(jobSubTaskID int, testing *commonmodels.
 		jobTaskSpec.Steps = append(jobTaskSpec.Steps, archiveStep)
 	}
 
-	appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec, &jobTaskSpec.Steps, fmt.Sprintf("%s-%s", testing.Name, "ignore-cache-sync"), jobTask.Name)
+	appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec, &jobTaskSpec.Steps, jobTask.Infrastructure, fmt.Sprintf("%s-%s", testing.Name, "ignore-cache-sync"), jobTask.Name)
 
 	renderedTask, err := replaceServiceAndModulesForTask(jobTask, serviceName, serviceModule)
 	if err != nil {

@@ -63,8 +63,6 @@ type JobCacheConfig struct {
 	CacheEnable  bool               `json:"cache_enable"`
 	CacheDirType types.CacheDirType `json:"cache_dir_type"`
 	CacheUserDir string             `json:"cache_user_dir"`
-	IgnoreCache  bool               `json:"ignore_cache"`
-	MediumType   types.MediumType   `json:"medium_type"`
 }
 
 // JobFileInfo contains information about files that need to be downloaded for VM jobs
