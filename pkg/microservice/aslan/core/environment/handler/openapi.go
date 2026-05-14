@@ -1685,18 +1685,15 @@ func OpenAPIProductionRestartService(c *gin.Context) {
 	ctx.RespErr = service.OpenAPIRestartService(projectName, envName, serviceName, true, ctx.Logger)
 }
 
-// OpenAPIListPodsInfo lists pods in a non-production environment.
-func OpenAPIListPodsInfo(c *gin.Context) {
-	openAPIListPodsInfo(c, false)
+func OpenAPIListServicePods(c *gin.Context) {
+	openAPIListServicePods(c, false)
 }
 
-// OpenAPIListProductionPodsInfo lists pods in a production environment.
-func OpenAPIListProductionPodsInfo(c *gin.Context) {
-	openAPIListPodsInfo(c, true)
+func OpenAPIListProductionServicePods(c *gin.Context) {
+	openAPIListServicePods(c, true)
 }
 
-// openAPIListPodsInfo is the shared implementation for pod listing.
-func openAPIListPodsInfo(c *gin.Context, production bool) {
+func openAPIListServicePods(c *gin.Context, production bool) {
 	ctx, err := internalhandler.NewContextWithAuthorization(c)
 	defer func() { internalhandler.JSONResponse(c, ctx) }()
 
@@ -1711,14 +1708,19 @@ func openAPIListPodsInfo(c *gin.Context, production bool) {
 		ctx.RespErr = e.ErrInvalidParam.AddErr(err)
 		return
 	}
+	serviceName := c.Param("serviceName")
+	if serviceName == "" {
+		ctx.RespErr = e.ErrInvalidParam.AddDesc("serviceName is empty")
+		return
+	}
 
-	// authorization checks
 	if !ctx.Resources.IsSystemAdmin {
 		if _, ok := ctx.Resources.ProjectAuthInfo[projectName]; !ok {
 			ctx.UnAuthorized = true
 			return
 		}
 
+		// check production env permission
 		if production {
 			if !ctx.Resources.ProjectAuthInfo[projectName].IsProjectAdmin &&
 				!ctx.Resources.ProjectAuthInfo[projectName].ProductionEnv.View {
@@ -1748,21 +1750,18 @@ func openAPIListPodsInfo(c *gin.Context, production bool) {
 		}
 	}
 
-	ctx.Resp, ctx.RespErr = service.ListPodsInfo(projectName, envName, production, ctx.Logger)
+	ctx.Resp, ctx.RespErr = service.OpenAPIListServicePods(projectName, envName, serviceName, production, ctx.Logger)
 }
 
-// OpenAPIGetPodDetailInfo gets pod details in a non-production environment.
-func OpenAPIGetPodDetailInfo(c *gin.Context) {
-	openAPIGetPodDetailInfo(c, false)
+func OpenAPIRestartServicePod(c *gin.Context) {
+	openAPIRestartServicePod(c, false)
 }
 
-// OpenAPIGetProductionPodDetailInfo gets pod details in a production environment.
-func OpenAPIGetProductionPodDetailInfo(c *gin.Context) {
-	openAPIGetPodDetailInfo(c, true)
+func OpenAPIProductionRestartServicePod(c *gin.Context) {
+	openAPIRestartServicePod(c, true)
 }
 
-// openAPIGetPodDetailInfo is the shared implementation for pod detail query.
-func openAPIGetPodDetailInfo(c *gin.Context, production bool) {
+func openAPIRestartServicePod(c *gin.Context, production bool) {
 	ctx, err := internalhandler.NewContextWithAuthorization(c)
 	defer func() { internalhandler.JSONResponse(c, ctx) }()
 
@@ -1777,76 +1776,9 @@ func openAPIGetPodDetailInfo(c *gin.Context, production bool) {
 		ctx.RespErr = e.ErrInvalidParam.AddErr(err)
 		return
 	}
-	podName := c.Param("podName")
-	if podName == "" {
-		ctx.RespErr = e.ErrInvalidParam.AddDesc("podName is empty")
-		return
-	}
-
-	// authorization checks
-	if !ctx.Resources.IsSystemAdmin {
-		if _, ok := ctx.Resources.ProjectAuthInfo[projectName]; !ok {
-			ctx.UnAuthorized = true
-			return
-		}
-
-		if production {
-			if !ctx.Resources.ProjectAuthInfo[projectName].IsProjectAdmin &&
-				!ctx.Resources.ProjectAuthInfo[projectName].ProductionEnv.View {
-				permitted, err := internalhandler.GetCollaborationModePermission(ctx.UserID, projectName, types.ResourceTypeEnvironment, envName, types.ProductionEnvActionView)
-				if err != nil || !permitted {
-					ctx.UnAuthorized = true
-					return
-				}
-			}
-		} else {
-			if !ctx.Resources.ProjectAuthInfo[projectName].IsProjectAdmin &&
-				!ctx.Resources.ProjectAuthInfo[projectName].Env.View {
-				permitted, err := internalhandler.GetCollaborationModePermission(ctx.UserID, projectName, types.ResourceTypeEnvironment, envName, types.EnvActionView)
-				if err != nil || !permitted {
-					ctx.UnAuthorized = true
-					return
-				}
-			}
-		}
-	}
-
-	if production {
-		err = commonutil.CheckZadigProfessionalLicense()
-		if err != nil {
-			ctx.RespErr = err
-			return
-		}
-	}
-
-	ctx.Resp, ctx.RespErr = service.GetPodDetailInfo(projectName, envName, podName, production, ctx.Logger)
-}
-
-// OpenAPIRestartPod restarts a single pod in a non-production environment.
-func OpenAPIRestartPod(c *gin.Context) {
-	openAPIRestartPod(c, false)
-}
-
-// OpenAPIProductionRestartPod restarts a single pod in a production environment.
-func OpenAPIProductionRestartPod(c *gin.Context) {
-	openAPIRestartPod(c, true)
-}
-
-// openAPIRestartPod is the shared implementation for pod restart.
-// Restart is implemented by deleting target pod so the controller recreates it.
-func openAPIRestartPod(c *gin.Context, production bool) {
-	ctx, err := internalhandler.NewContextWithAuthorization(c)
-	defer func() { internalhandler.JSONResponse(c, ctx) }()
-
-	if err != nil {
-		ctx.RespErr = fmt.Errorf("authorization Info Generation failed: err %s", err)
-		ctx.UnAuthorized = true
-		return
-	}
-
-	projectName, envName, err := generalOpenAPIRequestValidate(c)
-	if err != nil {
-		ctx.RespErr = e.ErrInvalidParam.AddErr(err)
+	serviceName := c.Param("serviceName")
+	if serviceName == "" {
+		ctx.RespErr = e.ErrInvalidParam.AddDesc("serviceName is empty")
 		return
 	}
 	podName := c.Param("podName")
@@ -1855,11 +1787,10 @@ func openAPIRestartPod(c *gin.Context, production bool) {
 		return
 	}
 
-	detail := fmt.Sprintf("环境名称:%s,pod名称:%s", envName, podName)
-	detailEn := fmt.Sprintf("Environment Name: %s, Pod Name: %s", envName, podName)
+	detail := fmt.Sprintf("环境名称:%s,服务名称:%s,pod名称:%s", envName, serviceName, podName)
+	detailEn := fmt.Sprintf("Environment Name: %s, Service Name: %s, Pod Name: %s", envName, serviceName, podName)
 	internalhandler.InsertDetailedOperationLog(c, ctx.UserName+"(openAPI)", projectName, setting.OperationSceneEnv, "重启", "环境-服务实例", detail, detailEn, "", types.RequestBodyTypeJSON, ctx.Logger, envName)
 
-	// authorization checks
 	if !ctx.Resources.IsSystemAdmin {
 		if _, ok := ctx.Resources.ProjectAuthInfo[projectName]; !ok {
 			ctx.UnAuthorized = true
@@ -1887,7 +1818,6 @@ func openAPIRestartPod(c *gin.Context, production bool) {
 		}
 	}
 
-	// licence check
 	if production {
 		err = commonutil.CheckZadigProfessionalLicense()
 		if err != nil {
@@ -1896,7 +1826,7 @@ func openAPIRestartPod(c *gin.Context, production bool) {
 		}
 	}
 
-	ctx.RespErr = service.DeletePod(envName, projectName, podName, production, ctx.Logger)
+	ctx.Resp, ctx.RespErr = service.OpenAPIRestartServicePod(projectName, envName, serviceName, podName, production, ctx.Logger)
 }
 
 func OpenAPICheckWorkloadsK8sServices(c *gin.Context) {

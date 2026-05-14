@@ -147,6 +147,98 @@ func OpenAPIRestartService(projectName, envName, serviceName string, production 
 	return RestartService(envName, args, production, logger)
 }
 
+func OpenAPIListServicePods(projectName, envName, serviceName string, production bool, logger *zap.SugaredLogger) (*OpenAPIListServicePodsResponse, error) {
+	serviceResp, err := GetService(envName, projectName, serviceName, production, "", logger)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &OpenAPIListServicePodsResponse{
+		ServiceName: serviceName,
+		Pods:        make([]*OpenAPIServicePodInfo, 0),
+	}
+	seen := make(map[string]struct{})
+
+	for _, scale := range serviceResp.Scales {
+		if scale == nil {
+			continue
+		}
+		for _, pod := range scale.Pods {
+			if pod == nil || pod.Name == "" {
+				continue
+			}
+			if _, ok := seen[pod.Name]; ok {
+				continue
+			}
+			seen[pod.Name] = struct{}{}
+
+			images := make([]string, 0, len(pod.Containers))
+			for _, c := range pod.Containers {
+				images = append(images, c.Image)
+			}
+
+			resp.Pods = append(resp.Pods, &OpenAPIServicePodInfo{
+				PodName:         pod.Name,
+				Status:          pod.Status,
+				PodReady:        pod.PodReady,
+				ContainersReady: pod.ContainersReady,
+				CreateTime:      pod.CreateTime,
+				IP:              pod.IP,
+				Images:          images,
+				WorkloadName:    scale.Name,
+				WorkloadType:    scale.Type,
+			})
+		}
+	}
+
+	return resp, nil
+}
+
+func OpenAPIRestartServicePod(projectName, envName, serviceName, podName string, production bool, logger *zap.SugaredLogger) (*OpenAPIRestartServicePodResponse, error) {
+	// Verify the target pod belongs to the specified service before restarting it.
+	podMatched, err := isServiceContainsPod(projectName, envName, serviceName, podName, production, logger)
+	if err != nil {
+		return nil, err
+	}
+	if !podMatched {
+		return nil, e.ErrInvalidParam.AddDesc(fmt.Sprintf("pod %s does not belong to service %s", podName, serviceName))
+	}
+
+	// Query the pod again to ensure it still exists before performing the restart.
+	if _, err := GetPodDetailInfo(projectName, envName, podName, production, logger); err != nil {
+		return nil, err
+	}
+
+	// Restart is implemented by deleting the pod and letting the workload controller recreate it.
+	if err := DeletePod(envName, projectName, podName, production, logger); err != nil {
+		return nil, err
+	}
+
+	return &OpenAPIRestartServicePodResponse{
+		Message: "success",
+	}, nil
+}
+
+func isServiceContainsPod(projectName, envName, serviceName, podName string, production bool, logger *zap.SugaredLogger) (bool, error) {
+	serviceResp, err := GetService(envName, projectName, serviceName, production, "", logger)
+	if err != nil {
+		return false, err
+	}
+
+	for _, scale := range serviceResp.Scales {
+		if scale == nil {
+			continue
+		}
+		for _, pod := range scale.Pods {
+			if pod != nil && pod.Name == podName {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
+}
+
 func OpenAPIGetGlobalVariables(projectName, envName string, production bool, logger *zap.SugaredLogger) ([]*commontypes.GlobalVariableKV, error) {
 	env, err := commonrepo.NewProductColl().Find(&commonrepo.ProductFindOptions{
 		Name:       projectName,
