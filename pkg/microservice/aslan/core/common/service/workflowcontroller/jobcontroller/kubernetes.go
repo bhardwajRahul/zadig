@@ -718,16 +718,17 @@ func ensureVolumeMounts(job *batchv1.Job) {
 }
 
 func getImagePullSecrets(registries []*commonmodels.RegistryNamespace) ([]corev1.LocalObjectReference, error) {
-	ImagePullSecrets := []corev1.LocalObjectReference{
-		{
-			Name: setting.DefaultImagePullSecret,
-		},
-	}
+	ImagePullSecrets := make([]corev1.LocalObjectReference, 0, len(registries))
+	seen := make(map[string]struct{}, len(registries))
 	for _, reg := range registries {
 		secretName, err := kube.GenRegistrySecretName(reg)
 		if err != nil {
 			return ImagePullSecrets, fmt.Errorf("failed to generate registry secret name: %s", err)
 		}
+		if _, ok := seen[secretName]; ok {
+			continue
+		}
+		seen[secretName] = struct{}{}
 
 		secret := corev1.LocalObjectReference{
 			Name: secretName,
