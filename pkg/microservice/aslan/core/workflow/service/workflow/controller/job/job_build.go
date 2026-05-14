@@ -437,6 +437,9 @@ func (j BuildJobController) ToTask(taskID int64) ([]*commonmodels.JobTask, error
 			jobTaskSpec.Properties.CacheEnable = buildInfo.CacheEnable
 			jobTaskSpec.Properties.CacheDirType = buildInfo.CacheDirType
 			jobTaskSpec.Properties.CacheUserDir = buildInfo.CacheUserDir
+			if jobTaskSpec.Properties.CacheEnable {
+				jobTaskSpec.Properties.CacheUserDir = commonutil.RenderEnv(jobTaskSpec.Properties.CacheUserDir, jobTaskSpec.Properties.Envs)
+			}
 		} else {
 			clusterInfo, err := commonrepo.NewK8SClusterColl().Get(buildInfo.PreBuild.ClusterID)
 			if err != nil {
@@ -455,6 +458,7 @@ func (j BuildJobController) ToTask(taskID int64) ([]*commonmodels.JobTask, error
 
 			if jobTaskSpec.Properties.CacheEnable {
 				jobTaskSpec.Properties.CacheUserDir = commonutil.RenderEnv(jobTaskSpec.Properties.CacheUserDir, jobTaskSpec.Properties.Envs)
+				jobTaskSpec.Properties.IgnoreCache = j.workflow.IgnoreCache
 				if jobTaskSpec.Properties.Cache.MediumType == types.NFSMedium {
 					jobTaskSpec.Properties.Cache.NFSProperties.Subpath = commonutil.RenderEnv(jobTaskSpec.Properties.Cache.NFSProperties.Subpath, jobTaskSpec.Properties.Envs)
 				} else if jobTaskSpec.Properties.Cache.MediumType == types.ObjectMedium {
@@ -490,7 +494,7 @@ func (j BuildJobController) ToTask(taskID int64) ([]*commonmodels.JobTask, error
 		jobTaskSpec.Steps = append(jobTaskSpec.Steps, toolInstallStep)
 
 		// init download object cache step
-		if jobTaskSpec.Properties.CacheEnable && jobTaskSpec.Properties.Cache.MediumType == types.ObjectMedium {
+		if jobTaskSpec.Properties.CacheEnable && jobTaskSpec.Properties.Cache.MediumType == types.ObjectMedium && !shouldSkipObjectCacheRestore(jobTaskSpec) {
 			cacheDir := "/workspace"
 			if jobTaskSpec.Properties.CacheDirType == types.UserDefinedCacheDir {
 				cacheDir = jobTaskSpec.Properties.CacheUserDir
@@ -716,6 +720,8 @@ func (j BuildJobController) ToTask(taskID int64) ([]*commonmodels.JobTask, error
 			}
 			jobTaskSpec.Steps = append(jobTaskSpec.Steps, shellStep)
 		}
+
+		appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec, &jobTaskSpec.Steps, jobTask.Infrastructure, fmt.Sprintf("%s-%s", build.ServiceName, "ignore-cache-sync"), jobTask.Name)
 
 		renderedTask, err := replaceServiceAndModulesForTask(jobTask, build.ServiceName, build.ServiceModule)
 		if err != nil {

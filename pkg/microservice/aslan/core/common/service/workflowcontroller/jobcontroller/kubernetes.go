@@ -79,6 +79,7 @@ const (
 	registrySecretSuffix         = "-registry-secret"
 	workflowConfigMapRoleSA      = "workflow-cm-sa"
 	outputCollectorContainerName = "job-output-collector"
+	ignoreCacheRuntimeVolumeName = "ignore-cache-runtime"
 
 	defaultRetryCount    = 3
 	defaultRetryInterval = time.Second * 3
@@ -524,6 +525,19 @@ EOF`,
 		mountPath := strings.ReplaceAll(jobTaskSpec.Properties.CacheUserDir, "$WORKSPACE", workflowCtx.Workspace)
 		if jobTaskSpec.Properties.CacheDirType == commontypes.WorkspaceCacheDir {
 			mountPath = workflowCtx.Workspace
+		}
+		if jobTaskSpec.Properties.IgnoreCache {
+			job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
+				Name: ignoreCacheRuntimeVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			})
+			job.Spec.Template.Spec.Containers[0].VolumeMounts = append(job.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+				Name:      ignoreCacheRuntimeVolumeName,
+				MountPath: mountPath,
+			})
+			mountPath = commontypes.IgnoreCacheNFSMountPath
 		}
 
 		job.Spec.Template.Spec.Containers[0].VolumeMounts = append(job.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{

@@ -60,6 +60,7 @@ type WorkflowV4 struct {
 	HookPayload    *HookPayload             `bson:"hook_payload"        yaml:"-"                   json:"hook_payload,omitempty"`
 	BaseName       string                   `bson:"base_name"           yaml:"-"                   json:"base_name"`
 	Remark         string                   `bson:"remark"              yaml:"-"                   json:"remark"`
+	IgnoreCache    bool                     `bson:"ignore_cache,omitempty" yaml:"ignore_cache,omitempty" json:"ignore_cache,omitempty"`
 	ShareStorages  []*ShareStorage          `bson:"share_storages"      yaml:"share_storages"      json:"share_storages"`
 	Hash           string                   `bson:"hash"                yaml:"hash"                json:"hash"`
 	// ConcurrencyLimit is the max number of concurrent runs of this workflow
@@ -1558,6 +1559,7 @@ type JobProperties struct {
 	CacheEnable         bool                   `bson:"cache_enable"           json:"cache_enable"          yaml:"cache_enable"`
 	CacheDirType        types.CacheDirType     `bson:"cache_dir_type"         json:"cache_dir_type"        yaml:"cache_dir_type"`
 	CacheUserDir        string                 `bson:"cache_user_dir"         json:"cache_user_dir"        yaml:"cache_user_dir"`
+	IgnoreCache         bool                   `bson:"ignore_cache,omitempty" json:"ignore_cache,omitempty" yaml:"ignore_cache,omitempty"`
 	ShareStorageDetails []*StorageDetail       `bson:"share_storage_details"  json:"share_storage_details" yaml:"-"`
 	EnablePrivileged    bool                   `bson:"enable_privileged,omitempty" json:"enable_privileged,omitempty" yaml:"enable_privileged,omitempty"`
 	UseHostDockerDaemon bool                   `bson:"use_host_docker_daemon,omitempty" json:"use_host_docker_daemon,omitempty" yaml:"use_host_docker_daemon"`

@@ -374,7 +374,7 @@ func (j ScanningJobController) GetVariableList(jobName string, getAggregatedVari
 						IsCredential: false,
 					})
 				}
-				
+
 				resp = append(resp, &commonmodels.KeyVal{
 					Key:          strings.Join([]string{"job", jobKey, "status"}, "."),
 					Value:        "",
@@ -590,6 +590,9 @@ func (j ScanningJobController) toJobTask(jobSubTaskID int, scanning *commonmodel
 		jobTaskSpec.Properties.CacheEnable = scanningInfo.AdvancedSetting.Cache.CacheEnable
 		jobTaskSpec.Properties.CacheDirType = scanningInfo.AdvancedSetting.Cache.CacheDirType
 		jobTaskSpec.Properties.CacheUserDir = scanningInfo.AdvancedSetting.Cache.CacheUserDir
+		if jobTaskSpec.Properties.CacheEnable {
+			jobTaskSpec.Properties.CacheUserDir = commonutil.RenderEnv(jobTaskSpec.Properties.CacheUserDir, jobTaskSpec.Properties.Envs)
+		}
 	} else {
 		if clusterInfo.Cache.MediumType == "" {
 			jobTaskSpec.Properties.CacheEnable = false
@@ -608,6 +611,18 @@ func (j ScanningJobController) toJobTask(jobSubTaskID int, scanning *commonmodel
 				}
 			} else {
 				jobTaskSpec.Properties.CacheEnable = false
+			}
+		}
+	}
+	if jobTaskSpec.Properties.CacheEnable {
+		jobTaskSpec.Properties.CacheUserDir = commonutil.RenderEnv(jobTaskSpec.Properties.CacheUserDir, jobTaskSpec.Properties.Envs)
+		jobTaskSpec.Properties.IgnoreCache = j.workflow.IgnoreCache
+		if jobTaskSpec.Properties.Cache.MediumType == types.NFSMedium {
+			jobTaskSpec.Properties.Cache.NFSProperties.Subpath = commonutil.RenderEnv(jobTaskSpec.Properties.Cache.NFSProperties.Subpath, jobTaskSpec.Properties.Envs)
+		} else if jobTaskSpec.Properties.Cache.MediumType == types.ObjectMedium {
+			cacheS3, err = commonrepo.NewS3StorageColl().Find(jobTaskSpec.Properties.Cache.ObjectProperties.ID)
+			if err != nil {
+				return nil, fmt.Errorf("find cache s3 storage: %s error: %v", jobTaskSpec.Properties.Cache.ObjectProperties.ID, err)
 			}
 		}
 	}
@@ -636,7 +651,7 @@ func (j ScanningJobController) toJobTask(jobSubTaskID int, scanning *commonmodel
 	jobTaskSpec.Steps = append(jobTaskSpec.Steps, toolInstallStep)
 
 	// init download object cache step
-	if jobTaskSpec.Properties.CacheEnable && jobTaskSpec.Properties.Cache.MediumType == types.ObjectMedium {
+	if jobTaskSpec.Properties.CacheEnable && jobTaskSpec.Properties.Cache.MediumType == types.ObjectMedium && !shouldSkipObjectCacheRestore(jobTaskSpec) {
 		cacheDir := "/workspace"
 		if jobTaskSpec.Properties.CacheDirType == types.UserDefinedCacheDir {
 			cacheDir = jobTaskSpec.Properties.CacheUserDir
@@ -938,6 +953,8 @@ func (j ScanningJobController) toJobTask(jobSubTaskID int, scanning *commonmodel
 	}
 
 	jobTaskSpec.Steps = append(jobTaskSpec.Steps, debugAfterStep)
+
+	appendIgnoreCacheSyncStepIfNeeded(jobTaskSpec, &jobTaskSpec.Steps, jobTask.Infrastructure, fmt.Sprintf("%s-%s", scanning.Name, "ignore-cache-sync"), jobTask.Name)
 
 	renderedTask, err := replaceServiceAndModulesForTask(jobTask, serviceName, serviceModule)
 	if err != nil {
