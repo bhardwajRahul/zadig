@@ -18,6 +18,7 @@ package service
 
 import (
 	"context"
+
 	"github.com/koderover/zadig/v2/pkg/tool/clientmanager"
 	"github.com/openkruise/kruise-api/client/clientset/versioned"
 	"go.uber.org/zap"
@@ -79,7 +80,7 @@ func ExportYaml(envName, productName, serviceName, source string, production boo
 	// needFetchByRenderedManifest happens when service is not deployed by zadig, or is not connected to zadig (when request comes from wd)
 	needFetchByRenderedManifest := false
 
-	if commonutil.ServiceDeployed(serviceName, env.ServiceDeployStrategy) {
+	if commonutil.ServiceIsDeployed(serviceName, env.ServiceDeployStrategy) {
 		selector := labels.Set{setting.ProductLabel: productName, setting.ServiceLabel: serviceName}.AsSelector()
 		yamls = append(yamls, getConfigMapYaml(kubeClient, namespace, selector, log)...)
 		yamls = append(yamls, getIngressYaml(kubeClient, namespace, selector, log)...)

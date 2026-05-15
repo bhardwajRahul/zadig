@@ -201,6 +201,14 @@ func (c *EnvVersionColl) DeleteRevisions(productName, envName, serviceName strin
 	return err
 }
 
+// delete by project name
+func (c *EnvVersionColl) DeleteByProject(projectName string) error {
+	query := bson.M{}
+	query["product_name"] = projectName
+	_, err := c.DeleteMany(mongotool.SessionContext(context.TODO(), c.Session), query)
+	return err
+}
+
 func (c *EnvVersionColl) Create(args *models.EnvServiceVersion) error {
 	// avoid panic issue
 	if args == nil {

@@ -801,9 +801,12 @@ const (
 	ReleaseWorkflow WorkflowCategory = "release"
 )
 
+type ServiceDeployStrategy string
+
 const (
-	ServiceDeployStrategyImport = "import"
-	ServiceDeployStrategyDeploy = "deploy"
+	ServiceDeployStrategyDraft  ServiceDeployStrategy = "draft"
+	ServiceDeployStrategyImport ServiceDeployStrategy = "import"
+	ServiceDeployStrategyDeploy ServiceDeployStrategy = "deploy"
 )
 
 // Instant Message System types

@@ -67,7 +67,7 @@ type Product struct {
 	EnvConfigs []*CreateUpdateCommonEnvCfgArgs `bson:"-"   json:"env_configs,omitempty"`
 
 	// New Since v1.16.0, used to determine whether to install resources
-	ServiceDeployStrategy map[string]string `bson:"service_deploy_strategy" json:"service_deploy_strategy"`
+	ServiceDeployStrategy map[string]setting.ServiceDeployStrategy `bson:"service_deploy_strategy" json:"service_deploy_strategy"`
 
 	// New Since v.1.18.0, env configs
 	AnalysisConfig      *AnalysisConfig       `bson:"analysis_config"      json:"analysis_config"`
@@ -181,7 +181,7 @@ type ProductService struct {
 	VariableYaml   string                          `bson:"-"                          json:"variable_yaml,omitempty"`
 	VariableKVs    []*commontypes.RenderVariableKV `bson:"-"                          json:"variable_kvs,omitempty"`
 	Updatable      bool                            `bson:"-"                          json:"updatable"`
-	DeployStrategy string                          `bson:"-"                          json:"deploy_strategy"`
+	DeployStrategy setting.ServiceDeployStrategy   `bson:"-"                          json:"deploy_strategy"`
 }
 
 func (svc *ProductService) GetServiceType() config.ServiceType {

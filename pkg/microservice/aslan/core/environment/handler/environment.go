@@ -1214,10 +1214,8 @@ func updateMultiK8sEnv(c *gin.Context, request *service.UpdateEnvRequest, produc
 	var envNames []string
 	for _, arg := range args {
 		for _, service := range arg.Services {
-			if service.DeployStrategy == setting.ServiceDeployStrategyImport {
-				if !((licenseStatus.Type == plutusenterprise.ZadigSystemTypeProfessional ||
-					licenseStatus.Type == plutusenterprise.ZadigSystemTypeEnterprise) &&
-					licenseStatus.Status == plutusenterprise.ZadigXLicenseStatusNormal) {
+			if service.DeployStrategy == setting.ServiceDeployStrategyImport || service.DeployStrategy == setting.ServiceDeployStrategyDraft {
+				if !commonutil.ValidateZadigEnterpriseLicense(licenseStatus) {
 					ctx.RespErr = e.ErrLicenseInvalid.AddDesc("")
 					return
 				}
@@ -1280,6 +1278,21 @@ func updateMultiHelmEnv(c *gin.Context, request *service.UpdateEnvRequest, produ
 		log.Errorf("CreateProduct json.Unmarshal err : %v", err)
 	}
 	args.ProductName = request.ProjectName
+
+	licenseStatus, err := plutusenterprise.New().CheckZadigXLicenseStatus()
+	if err != nil {
+		ctx.RespErr = fmt.Errorf("failed to validate zadig license status, error: %s", err)
+		return
+	}
+
+	for _, service := range args.ChartValues {
+		if service.DeployStrategy == setting.ServiceDeployStrategyImport || service.DeployStrategy == setting.ServiceDeployStrategyDraft {
+			if !commonutil.ValidateZadigEnterpriseLicense(licenseStatus) {
+				ctx.RespErr = e.ErrLicenseInvalid.AddDesc("")
+				return
+			}
+		}
+	}
 
 	detail := strings.Join(args.EnvNames, ",")
 	internalhandler.InsertDetailedOperationLog(c, ctx.UserName, request.ProjectName, setting.OperationSceneEnv, "更新", "环境", detail, detail, string(data), types.RequestBodyTypeJSON, ctx.Logger, args.EnvNames...)
@@ -1387,8 +1400,8 @@ func updateMultiHelmChartEnv(c *gin.Context, request *service.UpdateEnvRequest, 
 		return
 	}
 	for _, chartValue := range args.ChartValues {
-		if chartValue.DeployStrategy == setting.ServiceDeployStrategyImport {
-			if !commonutil.ValidateZadigProfessionalLicense(licenseStatus) {
+		if chartValue.DeployStrategy == setting.ServiceDeployStrategyImport || chartValue.DeployStrategy == setting.ServiceDeployStrategyDraft {
+			if !commonutil.ValidateZadigEnterpriseLicense(licenseStatus) {
 				ctx.RespErr = e.ErrLicenseInvalid.AddDesc("")
 				return
 			}

@@ -49,7 +49,7 @@ func prepareHelmProductCreation(templateProduct *templatemodels.Product, product
 		templateChartInfoMap[tc.ServiceName] = tc
 	}
 
-	serviceDeployStrategy := make(map[string]string)
+	serviceDeployStrategy := make(map[string]setting.ServiceDeployStrategy)
 
 	// user custom chart values
 	cvMap := make(map[string]*templatemodels.ServiceRender)
@@ -269,7 +269,7 @@ func prepareK8sProductCreation(templateProduct *templatemodels.Product, productO
 		}
 	}
 
-	serviceDeployStrategy := make(map[string]string)
+	serviceDeployStrategy := make(map[string]setting.ServiceDeployStrategy)
 	// build product services
 	productObj.Services = make([][]*commonmodels.ProductService, 0)
 	for _, svcGroup := range arg.Services {

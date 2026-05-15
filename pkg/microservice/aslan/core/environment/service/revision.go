@@ -169,7 +169,7 @@ func GetProductRevision(product *commonmodels.Product, allServiceTmpls []*common
 
 	if !prodRev.Updatable {
 		for _, svc := range product.GetServiceMap() {
-			if !commonutil.ServiceDeployed(svc.ServiceName, product.ServiceDeployStrategy) {
+			if !commonutil.ServiceIsDeployed(svc.ServiceName, product.ServiceDeployStrategy) {
 				prodRev.Updatable = true
 				break
 			}

@@ -823,7 +823,7 @@ func GenerateRenderedYaml(option *GeneSvcYamlOption) (string, int, []*WorkloadRe
 		hasCurrentBaseReplicaMap bool
 	)
 	if curProductSvc != nil &&
-		commonutil.ServiceDeployed(option.ServiceName, productInfo.ServiceDeployStrategy) &&
+		commonutil.ServiceIsDeployed(option.ServiceName, productInfo.ServiceDeployStrategy) &&
 		!option.UpdateServiceRevision &&
 		option.ReplicaOverrides == nil &&
 		!option.IgnoreCurrentReplicaOverrides {

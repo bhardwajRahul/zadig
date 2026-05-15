@@ -149,6 +149,7 @@ func (c *HelmDeployJobCtl) Run(ctx context.Context) {
 		return
 	}
 	newEnvService.DeployStrategy = setting.ServiceDeployStrategyDeploy
+	productInfo.ServiceDeployStrategy[c.jobTaskSpec.ServiceName] = setting.ServiceDeployStrategyDeploy
 
 	// calc final values yaml
 	finalValuesYaml := ""

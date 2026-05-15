@@ -22,6 +22,7 @@ import (
 	"github.com/koderover/zadig/v2/pkg/microservice/aslan/config"
 	templatemodels "github.com/koderover/zadig/v2/pkg/microservice/aslan/core/common/repository/models/template"
 	commontypes "github.com/koderover/zadig/v2/pkg/microservice/aslan/core/common/types"
+	"github.com/koderover/zadig/v2/pkg/setting"
 )
 
 type EnvServiceVersion struct {
@@ -35,7 +36,7 @@ type EnvServiceVersion struct {
 	Detail         string                         `bson:"detail"                    json:"detail"`
 	ProductFeature *templatemodels.ProductFeature `bson:"product_feature" json:"product_feature"`
 	Service        *ProductService                `bson:"service"                   json:"service"`
-	DeployStrategy string                         `bson:"deploy_strategy"           json:"deploy_strategy"`
+	DeployStrategy setting.ServiceDeployStrategy  `bson:"deploy_strategy"           json:"deploy_strategy"`
 	// env global variables
 	// GlobalValues for helm projects
 	DefaultValues string                     `bson:"default_values,omitempty"       json:"default_values,omitempty"`

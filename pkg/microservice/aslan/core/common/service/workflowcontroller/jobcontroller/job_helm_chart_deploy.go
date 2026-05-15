@@ -91,6 +91,7 @@ func (c *HelmChartDeployJobCtl) Run(ctx context.Context) {
 	for _, svc := range productInfo.GetSvcList() {
 		if svc.ReleaseName == deploy.ReleaseName {
 			productChartService = svc
+			productChartService.DeployStrategy = setting.ServiceDeployStrategyDeploy
 			if svc.FromZadig() {
 				svc.Type = setting.HelmChartDeployType
 				svc.DeployStrategy = setting.ServiceDeployStrategyDeploy

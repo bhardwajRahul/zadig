@@ -95,13 +95,13 @@ type ServiceResp struct {
 	Ingress            *IngressInfo      `json:"ingress"`
 	IstioGateway       *IstioGatewayInfo `json:"istio_gateway"`
 	//deprecated
-	Ready          string              `json:"ready"`
-	EnvStatuses    []*models.EnvStatus `json:"env_statuses,omitempty"`
-	WorkLoadType   string              `json:"workLoadType"`
-	Revision       int64               `json:"revision"`
-	EnvConfigs     []*models.EnvConfig `json:"env_configs"`
-	Updatable      bool                `json:"updatable"`
-	DeployStrategy string              `json:"deploy_strategy"`
+	Ready          string                        `json:"ready"`
+	EnvStatuses    []*models.EnvStatus           `json:"env_statuses,omitempty"`
+	WorkLoadType   string                        `json:"workLoadType"`
+	Revision       int64                         `json:"revision"`
+	EnvConfigs     []*models.EnvConfig           `json:"env_configs"`
+	Updatable      bool                          `json:"updatable"`
+	DeployStrategy setting.ServiceDeployStrategy `json:"deploy_strategy"`
 	// ZadigXReleaseType represents the service contain created by zadigx release workflow
 	// frontend should limit some operations on these services
 	ZadigXReleaseType string `json:"zadigx_release_type"`

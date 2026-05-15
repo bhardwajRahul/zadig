@@ -270,6 +270,8 @@ func buildProductResp(envName string, prod *commonmodels.Product, log *zap.Sugar
 					svc.ReleaseName = util.GeneReleaseName(templSvc.GetReleaseNaming(), svc.ProductName, prod.Namespace, prod.EnvName, svc.ServiceName)
 				}
 			}
+
+			svc.DeployStrategy = commonutil.GetServiceDeployStrategy(svc.ServiceName, prod.ServiceDeployStrategy)
 		}
 	}
 

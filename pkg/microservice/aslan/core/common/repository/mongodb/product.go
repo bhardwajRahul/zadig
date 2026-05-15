@@ -535,7 +535,7 @@ func (c *ProductColl) AddOneService(productName, envName string, groupIndex, ser
 	return nil
 }
 
-func (c *ProductColl) UpdateDeployStrategyAndGlobalVariable(envName, productName string, deployStrategy map[string]string, globalVariables []*types.GlobalVariableKV) error {
+func (c *ProductColl) UpdateDeployStrategyAndGlobalVariable(envName, productName string, deployStrategy map[string]setting.ServiceDeployStrategy, globalVariables []*types.GlobalVariableKV) error {
 	query := bson.M{
 		"env_name":     envName,
 		"product_name": productName,
@@ -551,7 +551,7 @@ func (c *ProductColl) UpdateDeployStrategyAndGlobalVariable(envName, productName
 	return err
 }
 
-func (c *ProductColl) UpdateDeployStrategy(envName, productName string, deployStrategy map[string]string) error {
+func (c *ProductColl) UpdateDeployStrategy(envName, productName string, deployStrategy map[string]setting.ServiceDeployStrategy) error {
 	query := bson.M{
 		"env_name":     envName,
 		"product_name": productName,

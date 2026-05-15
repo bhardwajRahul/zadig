@@ -319,7 +319,8 @@ func getServiceVariables(templateProduct *template.Product, product *commonmodel
 	ret := make([]*types.ServiceWithVariable, 0)
 	for _, svc := range product.GetServiceMap() {
 		ret = append(ret, &types.ServiceWithVariable{
-			ServiceName: svc.ServiceName,
+			ServiceName:    svc.ServiceName,
+			DeployStrategy: product.ServiceDeployStrategy[svc.ServiceName],
 		})
 	}
 
@@ -334,9 +335,10 @@ func getServiceVariables(templateProduct *template.Product, product *commonmodel
 	ret = make([]*types.ServiceWithVariable, 0)
 	for _, arg := range args {
 		ret = append(ret, &types.ServiceWithVariable{
-			ServiceName:  arg.ServiceName,
-			VariableYaml: arg.LatestVariableYaml,
-			VariableKVs:  arg.LatestVariableKVs,
+			ServiceName:    arg.ServiceName,
+			VariableYaml:   arg.LatestVariableYaml,
+			VariableKVs:    arg.LatestVariableKVs,
+			DeployStrategy: product.ServiceDeployStrategy[arg.ServiceName],
 		})
 	}
 

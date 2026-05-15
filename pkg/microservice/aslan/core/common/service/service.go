@@ -1139,7 +1139,7 @@ func BuildServiceInfoInEnv(productInfo *commonmodels.Product, templateSvcs []*co
 	}
 
 	svcUpdatable := func(svcName string, revision int64) bool {
-		if !commonutil.ServiceDeployed(svcName, productInfo.ServiceDeployStrategy) {
+		if !commonutil.ServiceIsDeployed(svcName, productInfo.ServiceDeployStrategy) {
 			return true
 		}
 		if svc, ok := templateSvcMap[svcName]; ok {

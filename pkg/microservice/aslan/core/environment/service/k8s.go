@@ -117,8 +117,11 @@ func (k *K8sService) updateService(args *SvcOptArgs) error {
 		return e.ErrUpdateService.AddErr(fmt.Errorf("failed to find service: %s in env: %s", newProductSvc.ServiceName, prodinfo.EnvName))
 	}
 
+	currentProductSvc.DeployStrategy = commonutil.GetServiceDeployStrategy(currentProductSvc.ServiceName, prodinfo.ServiceDeployStrategy)
+
 	newProductSvc.Containers = currentProductSvc.Containers
 	newProductSvc.Resources = currentProductSvc.Resources
+	newProductSvc.DeployStrategy = args.ServiceRev.DeployStrategy
 
 	if !args.UpdateServiceTmpl {
 		newProductSvc.Revision = currentProductSvc.Revision
@@ -149,8 +152,8 @@ func (k *K8sService) updateService(args *SvcOptArgs) error {
 		return e.ErrUpdateEnv.AddDesc(e.EnvCantUpdatedMsg)
 	}
 
-	curSvcRender := prodinfo.GetSvcRender(args.ServiceName)
 	globalVars := prodinfo.GlobalVariables
+	curSvcRender := prodinfo.GetSvcRender(args.ServiceName)
 
 	globalVars, args.ServiceRev.VariableKVs, err = commontypes.UpdateGlobalVariableKVs(newProductSvc.ServiceName, globalVars, args.ServiceRev.VariableKVs, curSvcRender.OverrideYaml.RenderVariableKVs)
 	if err != nil {
@@ -202,10 +205,20 @@ func (k *K8sService) updateService(args *SvcOptArgs) error {
 		return e.ErrUpdateEnv.AddDesc(fmt.Errorf("failed to compare service yaml, err: %s", err).Error())
 	}
 
+	isDraftToDeploy := false
+	if commonutil.ServiceIsDraft(args.ServiceName, prodinfo.ServiceDeployStrategy) && args.ServiceRev.DeployStrategy == setting.ServiceDeployStrategyDeploy {
+		isDraftToDeploy = true
+	}
+
 	// nothing to apply if rendered service yaml is not changed
-	if previewResult.Current.Yaml == previewResult.Latest.Yaml {
+	if !isDraftToDeploy && previewResult.Current.Yaml == previewResult.Latest.Yaml {
 		k.log.Infof("[%s][P:%s] Service yaml is not changed", args.EnvName, args.ProductName)
+	} else if args.ServiceRev.DeployStrategy == setting.ServiceDeployStrategyDraft {
+		k.log.Infof("[%s][P:%s] Service is draft, skip apply", args.EnvName, args.ProductName)
+		prodinfo.ServiceDeployStrategy = commonutil.SetServiceDeployStrategyDraft(prodinfo.ServiceDeployStrategy, args.ServiceName)
 	} else {
+		prodinfo.ServiceDeployStrategy[args.ServiceName] = args.ServiceRev.DeployStrategy
+
 		err = kube.CheckResourceAppliedByOtherEnv(previewResult.Latest.Yaml, prodinfo, args.ServiceName)
 		if err != nil {
 			return e.ErrUpdateEnv.AddErr(err)
@@ -221,6 +234,8 @@ func (k *K8sService) updateService(args *SvcOptArgs) error {
 			return e.ErrUpdateProduct.AddDesc(err.Error())
 		}
 		newProductSvc.Resources = kube.UnstructuredToResources(items)
+
+		prodinfo.ServiceDeployStrategy = commonutil.SetServiceDeployStrategyDepoly(prodinfo.ServiceDeployStrategy, args.ServiceName)
 	}
 
 	newProductSvc.Error = ""
@@ -232,8 +247,6 @@ func (k *K8sService) updateService(args *SvcOptArgs) error {
 			}
 		}
 	}
-
-	prodinfo.ServiceDeployStrategy = commonutil.SetServiceDeployStrategyDepoly(prodinfo.ServiceDeployStrategy, args.ServiceName)
 
 	session := mongotool.Session()
 	defer session.EndSession(context.Background())
@@ -288,7 +301,7 @@ func (k *K8sService) calculateProductStatus(productInfo *commonmodels.Product, i
 			wg.Add(1)
 			go func(service *commonmodels.ProductService) {
 				defer wg.Done()
-				if service == nil {
+				if service == nil || commonutil.ServiceIsDraft(service.ServiceName, productInfo.ServiceDeployStrategy) {
 					return
 				}
 				serviceTmpl, err := repository.QueryTemplateService(&commonrepo.ServiceFindOption{
@@ -664,7 +677,7 @@ func (k *K8sService) createGroup(username string, product *commonmodels.Product,
 	var resources []*unstructured.Unstructured
 
 	for i := range group {
-		if !commonutil.ServiceDeployed(group[i].ServiceName, product.ServiceDeployStrategy) {
+		if commonutil.ServiceIsImported(group[i].ServiceName, product.ServiceDeployStrategy) {
 			// services are only imported, we do not deploy them again, but we need to fetch the images
 			containers, err := fetchWorkloadImages(group[i], product, kubeClient)
 			if err != nil {

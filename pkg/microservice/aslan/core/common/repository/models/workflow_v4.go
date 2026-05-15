@@ -482,6 +482,7 @@ type ZadigDeployJobSpec struct {
 
 	// helm only field
 	ValueMergeStrategy  config.ValueMergeStrategy `bson:"value_merge_strategy"             json:"value_merge_strategy"                yaml:"value_merge_strategy"`
+	ValueSyncStrategy   config.ValueSyncStrategy  `bson:"value_sync_strategy"              json:"value_sync_strategy"                 yaml:"value_sync_strategy"`
 	MergeStrategySource config.ParamSourceType    `bson:"merge_strategy_source"            json:"merge_strategy_source"               yaml:"merge_strategy_source"`
 
 	// YAML deploy only field
@@ -548,7 +549,7 @@ type DeployHelmChart struct {
 
 type DeployBasicInfo struct {
 	ServiceName    string              `bson:"service_name"                     yaml:"service_name"                        json:"service_name"`
-	DeployStrategy string              `bson:"deploy_strategy"                     yaml:"deploy_strategy"                        json:"deploy_strategy"`
+	DeployStrategy setting.ServiceDeployStrategy `bson:"deploy_strategy"                     yaml:"deploy_strategy"                        json:"deploy_strategy"`
 	Modules        []*DeployModuleInfo `bson:"modules"                          yaml:"modules"                             json:"modules"`
 	Deployed       bool                `bson:"deployed"                         yaml:"deployed"                            json:"deployed"`
 	AutoSync       bool                `bson:"-"                                yaml:"auto_sync"                           json:"auto_sync"`
@@ -587,6 +588,8 @@ type DeployVariableInfo struct {
 
 	VariableKVs []*commontypes.RenderVariableKV `bson:"variable_kvs"                     yaml:"variable_kvs"              json:"variable_kvs"`
 	OverrideKVs string                          `bson:"override_kvs"                     yaml:"override_kvs"              json:"override_kvs"` // used for helm services, json-encoded string of kv value
+
+	SourceGitRepo *CreateFromRepo `bson:"source_git_repo,omitempty" json:"source_git_repo,omitempty" yaml:"source_git_repo,omitempty"`
 
 	// final yaml for both helm and k8s service to deploy
 	VariableYaml string `bson:"variable_yaml"                    yaml:"variable_yaml"                       json:"variable_yaml"`

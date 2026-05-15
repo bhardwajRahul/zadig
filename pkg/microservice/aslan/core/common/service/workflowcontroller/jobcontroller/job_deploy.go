@@ -339,7 +339,7 @@ func (c *DeployJobCtl) updateSystemService(env *commonmodels.Product, currentYam
 
 	addZadigLabel := !c.jobTaskSpec.Production
 	if addZadigLabel {
-		if !commonutil.ServiceDeployed(c.jobTaskSpec.ServiceName, env.ServiceDeployStrategy) && !updateRevision &&
+		if !commonutil.ServiceIsDeployed(c.jobTaskSpec.ServiceName, env.ServiceDeployStrategy) && !updateRevision &&
 			!slices.Contains(c.jobTaskSpec.DeployContents, config.DeployVars) {
 			addZadigLabel = false
 		}
@@ -348,6 +348,11 @@ func (c *DeployJobCtl) updateSystemService(env *commonmodels.Product, currentYam
 	err := kube.CheckResourceAppliedByOtherEnv(updatedYaml, env, serviceName)
 	if err != nil {
 		return errors.New(err.Error())
+	}
+
+	forceUpdateYaml := false
+	if env.ServiceDeployStrategy[serviceName] == setting.ServiceDeployStrategyDraft {
+		forceUpdateYaml = true
 	}
 
 	unstructuredList, err := kube.CreateOrPatchResource(&kube.ResourceApplyParam{
@@ -362,6 +367,7 @@ func (c *DeployJobCtl) updateSystemService(env *commonmodels.Product, currentYam
 		ProductInfo:         env,
 		JobLogContext:       &joblog.JobLogContext{WorkflowCtx: c.workflowCtx, JobTask: c.job},
 		OverrideResource:    overrideResource,
+		ForceUpdateYaml:     forceUpdateYaml,
 	}, c.logger)
 
 	if err != nil {

@@ -747,6 +747,13 @@ func DeleteProductTemplate(userName, productName, requestID string, isDelete boo
 		return err
 	}
 
+	// delete all env service versions
+	err = commonrepo.NewEnvServiceVersionColl().DeleteByProject(productName)
+	if err != nil {
+		log.Errorf("failed to delete all env service versions, error:%s", err)
+		return err
+	}
+
 	//删除交付中心
 	//删除构建/删除测试/删除服务
 	//删除workflow和历史task
